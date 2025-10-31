@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RocciaMusic · Sound Playground</title>
+    <meta name="description" content="Ascolta le tracce di RocciaMusic su SoundCloud." />
+    <meta name="theme-color" content="#0A0E27" />
+
+    <!-- Critical CSS: base + layout minimi per evitare FOUC -->
+    <style>
+      :root { color-scheme: dark; }
+      html, body { margin:0; padding:0; height:100%; background:#0A0E27; }
+      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color:#F8F9FA; }
+      .container { width: min(1100px, 92%); margin-inline: auto; }
+      .visually-hidden{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+      .hero{ position:relative; min-height:70vh; display:grid; place-items:center; text-align:center; overflow:hidden; }
+      @media (min-width: 900px){ .hero{ min-height:100vh; } }
+    </style>
+
+    <!-- CSS principali -->
+    <link rel="preload" href="css/style.css" as="style" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/animations.css" />
+  </head>
+  <body>
+    <a class="visually-hidden" href="#music">Salta ai contenuti principali</a>
+    <!-- Intro overlay: katana slash -->
+    <div id="intro" class="intro-overlay" aria-hidden="true">
+      <div class="slash"></div>
+    </div>
+    <header class="site-header" role="banner">
+      <div class="container">
+        <p class="site-title">Welcome to our node</p>
+      </div>
+    </header>
+    <main>
+      <!-- Hero Section -->
+      <section class="hero" aria-label="Hero RocciaMusic">
+        <!-- Parallax background immagine utente -->
+        <div class="hero-bg" aria-hidden="true"></div>
+        <div class="hero-overlay" aria-hidden="true"></div>
+
+        <!-- Lightning FX -->
+        <canvas class="fx-lightning" id="fx-lightning" aria-hidden="true"></canvas>
+
+        <div class="hero-content" role="region" aria-label="Titolo">
+          <h1 class="brand">NuovoRap</h1>
+        </div>
+      </section>
+
+      <!-- SoundCloud Section -->
+      <section id="music" class="music-section" aria-labelledby="music-heading">
+        <div class="container">
+          <h2 id="music-heading">I miei pezzi</h2>
+          <div class="players-grid">
+            <!-- Card 1 -->
+            <article class="player-card">
+              <div class="glow-border" aria-hidden="true"></div>
+              <iframe
+                class="sc-frame"
+                title="SoundCloud Player · _DEUS_EX_MACHINA"
+                loading="lazy"
+                allow="autoplay"
+                data-src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/2165903973&color=%23ff5500&auto_play=true&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true">
+              </iframe>
+            </article>
+
+            <!-- Card 2 -->
+            <article class="player-card">
+              <div class="glow-border" aria-hidden="true"></div>
+              <iframe
+                class="sc-frame"
+                title="SoundCloud Player · _IRONMONKEY"
+                loading="lazy"
+                allow="autoplay"
+                data-src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/2165902503&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true">
+              </iframe>
+            </article>
+
+            <!-- Card 3 -->
+            <article class="player-card">
+              <div class="glow-border" aria-hidden="true"></div>
+              <iframe
+                class="sc-frame"
+                title="SoundCloud Player · Non è Mio"
+                loading="lazy"
+                allow="autoplay"
+                data-src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/1933726466&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true">
+              </iframe>
+            </article>
+
+            <!-- Card 4 -->
+            <article class="player-card">
+              <div class="glow-border" aria-hidden="true"></div>
+              <iframe
+                class="sc-frame"
+                title="SoundCloud Player · NIENTE"
+                loading="lazy"
+                allow="autoplay"
+                data-src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/1920477512&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true">
+              </iframe>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- Anime.js CDN for timeline-based animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+    <script src="js/main.js" defer></script>
+  </body>
+  </html>
+
+

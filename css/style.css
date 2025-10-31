@@ -1,0 +1,79 @@
+:root{
+  --primary:#0066FF;--secondary:#00D9FF;--accent:#FF006E;--dark:#0A0E27;--light:#F8F9FA;
+  --glass-bg:rgba(255,255,255,.08);--glass-border:rgba(255,255,255,.25);
+  --spacing-xs:8px;--spacing-sm:16px;--spacing-md:32px;--spacing-lg:64px;--spacing-xl:128px;
+  --radius-sm:8px;--radius-md:16px;--radius-lg:24px;
+  --shadow-sm:0 2px 8px rgba(0,0,0,.12);--shadow-md:0 4px 16px rgba(0,0,0,.2);--shadow-lg:0 8px 32px rgba(0,0,0,.3);
+  --shadow-glow:0 0 40px rgba(0,102,255,.4);
+}
+
+*{box-sizing:border-box}
+img{max-width:100%;display:block}
+a{color:inherit}
+
+/* HERO */
+.hero{isolation:isolate}
+.hero-bg{position:absolute; inset:0; background:url('../assets/images/hero-bg.jpg') center/cover no-repeat; transform:translateZ(0); will-change:transform;}
+.hero-overlay{position:absolute; inset:0; background:linear-gradient(180deg, rgba(10,14,39,.8) 0%, rgba(10,14,39,.35) 40%, rgba(10,14,39,.9) 100%);} 
+.hero-content{position:relative; z-index:1; padding:var(--spacing-md); border-radius:var(--radius-lg); background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06)); border:1px solid var(--glass-border); box-shadow:var(--shadow-md);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); animation: fadeUp .9s ease both .15s;}
+.hero .brand{font-size:clamp(2rem,7vw,4rem); letter-spacing:.02em; margin:0 0 .25em; text-shadow:0 1px 0 rgba(0,0,0,.4)}
+.hero .subtitle{opacity:.9; margin:0; font-size:clamp(1rem,2.8vw,1.25rem)}
+
+/* HEADER fixed */
+.site-header{position:sticky; top:0; z-index:1000; background:#0dbb4c; color:#042b12; box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.site-header .container{display:flex; align-items:center; justify-content:center; min-height:56px}
+.site-title{margin:0; font-weight:700; letter-spacing:.02em; text-align:center}
+
+/* Lightning canvas */
+.fx-lightning{position:absolute; inset:0; z-index:2; pointer-events:none; mix-blend-mode:screen; opacity:.9;}
+
+/* SECTION MUSIC */
+.music-section{padding:var(--spacing-lg) 0}
+.music-section h2{font-size:clamp(1.25rem,2.5vw,1.75rem); letter-spacing:.08em; text-transform:uppercase}
+.players-grid{margin-top:var(--spacing-md); display:grid; gap:var(--spacing-md); grid-template-columns:1fr}
+@media (min-width: 860px){ .players-grid{ grid-template-columns: 1fr 1fr; } }
+
+.player-card{position:relative; border-radius:var(--radius-lg); background:rgba(255,255,255,.04); border:1px solid var(--glass-border); overflow:hidden; box-shadow:var(--shadow-sm); transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;}
+.player-card:hover{ transform:scale(1.02); box-shadow:var(--shadow-glow); border-color:rgba(0,217,255,.45); }
+.player-card:focus-within{ outline:2px solid color-mix(in oklab, var(--primary), white 15%); outline-offset:2px }
+
+.glow-border{display:none}
+
+.sc-frame{display:block; width:100%; height:300px; border:0; background:#02040f; border-radius:calc(var(--radius-lg) - 2px)}
+
+/* UI polish */
+.music-section{padding:calc(var(--spacing-lg) + 12px) 0 var(--spacing-xl)}
+.players-grid{gap:calc(var(--spacing-md) + 4px)}
+.player-card:hover{ transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.35); border-color:rgba(0,217,255,.25); }
+.music-section h2{letter-spacing:.12em}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important}
+}
+
+/* Keyframes shared */
+@keyframes fadeUp{from{opacity:0; transform:translateY(16px)} to{opacity:1; transform:translateY(0)}}
+/* removed bubbles rise */
+
+/* Mobile responsive tweaks */
+@media (max-width: 640px){
+  .hero{ min-height: 86vh }
+  .hero-content{ padding: var(--spacing-sm); border-radius: var(--radius-md) }
+  .hero .brand{ font-size: clamp(1.75rem, 11vw, 2.5rem) }
+  .site-header .container{ min-height:48px }
+  .site-title{ font-size: 0.95rem }
+  .music-section{ padding: var(--spacing-md) 0 var(--spacing-lg) }
+  .players-grid{ gap: var(--spacing-sm) }
+  .sc-frame{ height: 240px }
+  .fx-lightning{ opacity:.8 }
+}
+
+@media (max-width: 360px){
+  .site-title{ font-size: 0.9rem }
+  .hero .brand{ font-size: clamp(1.6rem, 12vw, 2.2rem) }
+  .sc-frame{ height: 210px }
+}
+
+
