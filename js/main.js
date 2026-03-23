@@ -18,25 +18,60 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  // Intersection Observer per caricare gli iframe solo alla visibilità
+  // --- COOKIE CONSENT LOGIC ---
+  const cookieBanner = document.getElementById('cookie-banner');
+  const btnAccept = document.getElementById('cookie-accept');
+  const btnDecline = document.getElementById('cookie-decline');
+  const btnReset = document.getElementById('reset-cookies');
+
+  const getConsent = () => localStorage.getItem('cookie-consent');
+  const setConsent = (val) => {
+    localStorage.setItem('cookie-consent', val);
+    if (val === 'accepted') loadAllIframes();
+    cookieBanner.classList.remove('is-visible');
+  };
+
+  const loadAllIframes = () => {
+    frames.forEach(f => {
+      const src = f.getAttribute('data-src');
+      if (src && !f.getAttribute('src')) {
+        f.setAttribute('src', src);
+      }
+    });
+  };
+
+  // Intersection Observer per caricare gli iframe solo alla visibilità + CONSENSO
   if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver((entries, obs) => {
       for (const entry of entries) {
         if (entry.isIntersecting) {
           const el = entry.target;
-          const src = el.getAttribute('data-src');
-          if (src && !el.getAttribute('src')) {
-            el.setAttribute('src', src);
+          if (getConsent() === 'accepted') {
+            const src = el.getAttribute('data-src');
+            if (src && !el.getAttribute('src')) {
+              el.setAttribute('src', src);
+            }
           }
           obs.unobserve(el);
         }
       }
     }, { rootMargin: '200px 0px' });
     frames.forEach(f => io.observe(f));
-  } else {
-    // Fallback: set src immediately
-    frames.forEach(f => { const s=f.getAttribute('data-src'); if(s){ f.setAttribute('src', s); } });
+  } else if (getConsent() === 'accepted') {
+    loadAllIframes();
   }
+
+  // Mostra banner se manca il consenso
+  if (!getConsent()) {
+    setTimeout(() => cookieBanner.classList.add('is-visible'), 1000);
+  }
+
+  btnAccept?.addEventListener('click', () => setConsent('accepted'));
+  btnDecline?.addEventListener('click', () => setConsent('declined'));
+  btnReset?.addEventListener('click', () => {
+    localStorage.removeItem('cookie-consent');
+    window.location.reload();
+  });
 
   // Respect reduced motion
   const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -192,7 +227,8 @@
     runIntro();
     Lightning();
     // Safety fallback: auto-hide intro after 2s in case CDN blocks or script fails
-    setTimeout(() => { if (intro && !intro.classList.contains('is-hidden')) intro.classList.add('is-hidden'); }, 2000);
+    // Safety fallback: auto-hide intro after 2.5s
+    setTimeout(() => { if (intro && !intro.classList.contains('is-hidden')) intro.classList.add('is-hidden'); }, 2500);
   });
 })();
 
