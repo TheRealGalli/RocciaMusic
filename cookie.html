@@ -6,18 +6,28 @@
     <title>Cookie Policy - RocciaMusic</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
-        .legal-content { padding: var(--spacing-lg) 0; line-height: 1.6; }
-        .legal-content h1 { margin-bottom: var(--spacing-md); }
-        .legal-content h2 { margin-top: var(--spacing-md); margin-bottom: var(--spacing-sm); }
-        .legal-content p { margin-bottom: var(--spacing-sm); }
-        .back-link { display: inline-block; margin-bottom: var(--spacing-md); color: var(--secondary); text-decoration: none; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; margin: var(--spacing-sm) 0; }
-        th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--glass-border); }
+        body { background: #0A0E27; color: #F8F9FA; font-family: system-ui, -apple-system, sans-serif; margin: 0; }
+        .legal-content { padding: var(--spacing-xl) 0; line-height: 1.8; max-width: 800px; margin: 0 auto; }
+        .legal-content h1 { font-size: 2.5rem; margin-bottom: var(--spacing-md); color: var(--secondary); text-shadow: 0 0 20px rgba(0, 217, 255, 0.3); }
+        .legal-content h2 { margin-top: var(--spacing-lg); margin-bottom: var(--spacing-sm); color: var(--light); border-left: 4px solid var(--secondary); padding-left: 15px; }
+        .legal-content p { margin-bottom: var(--spacing-sm); opacity: 0.9; }
+        .header-link { text-decoration: none; display: block; width: 100%; transition: opacity 0.2s; }
+        .header-link:hover { opacity: 0.9; }
+        table { width: 100%; border-collapse: collapse; margin: var(--spacing-md) 0; background: rgba(255, 255, 255, 0.05); border-radius: 8px; overflow: hidden; }
+        th, td { text-align: left; padding: 15px; border-bottom: 1px solid var(--glass-border); }
+        th { background: rgba(0, 217, 255, 0.1); color: var(--secondary); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.1em; }
     </style>
 </head>
 <body>
+    <header class="site-header" role="banner">
+        <a href="index.html" class="header-link">
+            <div class="container">
+                <p class="site-title">Welcome to our node</p>
+            </div>
+        </a>
+    </header>
+
     <div class="container legal-content">
-        <a href="index.html" class="back-link">← Torna alla Home</a>
         <h1>Cookie Policy</h1>
         <p>Ultimo aggiornamento: 23 Marzo 2026</p>
 
@@ -61,7 +71,7 @@
 
         <section>
             <h2>Cookie di Terze Parti</h2>
-            <p>L'interazione con i widget di SoundCloud comporta l'invio di cookie da parte di SoundCloud. Per maggiori informazioni, consulta la <a href="https://soundcloud.com/pages/cookies" target="_blank">Cookie Policy di SoundCloud</a>.</p>
+            <p>L'interazione con i widget di SoundCloud comporta l'invio di cookie da parte di SoundCloud. Per maggiori informazioni, consulta la <a href="https://soundcloud.com/pages/cookies" target="_blank" style="color: var(--secondary);">Cookie Policy di SoundCloud</a>.</p>
         </section>
     </div>
 </body>

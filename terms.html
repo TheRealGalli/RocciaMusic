@@ -6,16 +6,26 @@
     <title>Termini di Servizio - RocciaMusic</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
-        .legal-content { padding: var(--spacing-lg) 0; line-height: 1.6; }
-        .legal-content h1 { margin-bottom: var(--spacing-md); }
-        .legal-content h2 { margin-top: var(--spacing-md); margin-bottom: var(--spacing-sm); }
-        .legal-content p { margin-bottom: var(--spacing-sm); }
-        .back-link { display: inline-block; margin-bottom: var(--spacing-md); color: var(--secondary); text-decoration: none; font-weight: bold; }
+        body { background: #0A0E27; color: #F8F9FA; font-family: system-ui, -apple-system, sans-serif; margin: 0; }
+        .legal-content { padding: var(--spacing-xl) 0; line-height: 1.8; max-width: 800px; margin: 0 auto; }
+        .legal-content h1 { font-size: 2.5rem; margin-bottom: var(--spacing-md); color: var(--secondary); text-shadow: 0 0 20px rgba(0, 217, 255, 0.3); }
+        .legal-content h2 { margin-top: var(--spacing-lg); margin-bottom: var(--spacing-sm); color: var(--light); border-left: 4px solid var(--secondary); padding-left: 15px; }
+        .legal-content p { margin-bottom: var(--spacing-sm); opacity: 0.9; }
+        .header-link { text-decoration: none; display: block; width: 100%; transition: opacity 0.2s; }
+        .header-link:hover { opacity: 0.9; }
+        .highlight { color: var(--secondary); font-weight: 600; }
     </style>
 </head>
 <body>
+    <header class="site-header" role="banner">
+        <a href="index.html" class="header-link">
+            <div class="container">
+                <p class="site-title">Welcome to our node</p>
+            </div>
+        </a>
+    </header>
+
     <div class="container legal-content">
-        <a href="index.html" class="back-link">← Torna alla Home</a>
         <h1>Termini di Servizio</h1>
         <p>Benvenuto su rocciamusic.com.</p>
 
@@ -26,7 +36,7 @@
 
         <section>
             <h2>2. Disclaimer di affiliazione</h2>
-            <p><strong>IMPORTANTE:</strong> Questo sito e il suo titolare non sono in alcun modo affiliati, associati, autorizzati o legalmente legati alla precedente etichetta discografica "Roccia Music" (fondata da Marracash e Shablo) né ai suoi fondatori o artisti associati. L'utilizzo del dominio è limitato alla promozione del portfolio personale dell'attuale proprietario.</p>
+            <p><span class="highlight">IMPORTANTE:</span> Questo sito e il suo titolare non sono in alcun modo affiliati, associati, autorizzati o legalmente legati alla precedente etichetta discografica "Roccia Music" (fondata da Marracash e Shablo) né ai suoi fondatori o artisti associati. L'utilizzo del dominio è limitato alla promozione del portfolio personale dell'attuale proprietario.</p>
         </section>
 
         <section>
