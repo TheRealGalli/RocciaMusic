@@ -247,9 +247,12 @@
       
       // Hide loader instantly as soon as we have the first frame!
       if (loader) loader.classList.add('fade-out');
-      resizeCanvas();
-      updateFrameOnScroll();
-      startRenderLoop();
+      
+      requestAnimationFrame(() => {
+        resizeCanvas();
+        updateFrameOnScroll();
+        startRenderLoop();
+      });
       
       // 2. Load the remaining frames in the background
       const framesToLoad = [];
@@ -292,13 +295,11 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  // Kick everything after load for better first paint
-  window.addEventListener('load', () => {
-    runIntro();
-    preloadImages();
-    // Safety fallback: auto-hide intro after 2.5s
-    setTimeout(() => { if (intro && !intro.classList.contains('is-hidden')) intro.classList.add('is-hidden'); }, 2500);
-  });
+  // Kick everything immediately instead of waiting for window.onload (which waits for slow SoundCloud embeds)
+  runIntro();
+  preloadImages();
+  // Safety fallback: auto-hide intro after 2.5s
+  setTimeout(() => { if (intro && !intro.classList.contains('is-hidden')) intro.classList.add('is-hidden'); }, 2500);
 })();
 
 
