@@ -15,7 +15,8 @@
   const isMobile = window.innerWidth <= 768;
   const frameStep = isMobile ? 2 : 1; // Load half the frames on mobile to save memory & render faster
   const totalFrames = 300;
-  const images = [];
+  const images = [];       // raw HTMLImageElement
+  const bitmaps = [];      // GPU-resident ImageBitmap (faster drawImage, especially on mobile)
   let loadedCount = 0;
   let currentFrameIndex = -1;
 
@@ -119,40 +120,70 @@
     }, '-=120');
   };
 
-  // --- FRAME-BY-FRAME CANVAS SWORD ANIMATION ---
+  // Draw a pre-scaled bitmap if available, otherwise fall back to raw image
   const drawFrame = (index) => {
-    if (!canvas || !ctx || !images[index]) return;
-    
-    const img = images[index];
+    if (!canvas || !ctx) return;
+    const src = bitmaps[index] || images[index];
+    if (!src) return;
+
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
-    
+
+    // If using a pre-scaled bitmap, it already matches canvas size — pure blit
+    if (bitmaps[index]) {
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      ctx.drawImage(bitmaps[index], 0, 0);
+      currentFrameIndex = index;
+      return;
+    }
+
+    // Fallback: scale raw image with contain logic
+    const img = src;
     const imgWidth = img.naturalWidth || img.width;
     const imgHeight = img.naturalHeight || img.height;
-    
     if (!imgWidth || !imgHeight) return;
 
     const imgRatio = imgWidth / imgHeight;
     const canvasRatio = canvasWidth / canvasHeight;
-    
     let drawWidth, drawHeight, x, y;
-    
-    // We use "contain" scaling to ensure the entire sword scene is fully visible on any screen size/ratio
     if (canvasRatio > imgRatio) {
-      drawWidth = canvasHeight * imgRatio;
-      drawHeight = canvasHeight;
-      x = (canvasWidth - drawWidth) / 2;
-      y = 0;
+      drawWidth = canvasHeight * imgRatio; drawHeight = canvasHeight;
+      x = (canvasWidth - drawWidth) / 2; y = 0;
     } else {
-      drawWidth = canvasWidth;
-      drawHeight = canvasWidth / imgRatio;
-      x = 0;
-      y = (canvasHeight - drawHeight) / 2;
+      drawWidth = canvasWidth; drawHeight = canvasWidth / imgRatio;
+      x = 0; y = (canvasHeight - drawHeight) / 2;
     }
-    
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(img, x, y, drawWidth, drawHeight);
     currentFrameIndex = index;
+  };
+
+  // Pre-scale all loaded images into GPU bitmaps at current canvas resolution
+  const rebuildBitmaps = async () => {
+    if (!canvas || !('createImageBitmap' in window)) return;
+    const cw = canvas.width;
+    const ch = canvas.height;
+    // Run in small batches so the main thread isn't blocked
+    const BATCH = 10;
+    for (let i = 0; i < images.length; i += BATCH) {
+      const batch = images.slice(i, i + BATCH);
+      const promises = batch.map((img, j) => {
+        if (!img || !img.naturalWidth) return Promise.resolve(null);
+        // contain fit: calculate target draw rect
+        const ir = img.naturalWidth / img.naturalHeight;
+        const cr = cw / ch;
+        let dw, dh, dx, dy;
+        if (cr > ir) { dw = ch * ir; dh = ch; dx = (cw - dw) / 2; dy = 0; }
+        else         { dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2; }
+        // Draw onto an offscreen canvas first so we can bitmapize the full frame
+        const oc = new OffscreenCanvas(cw, ch);
+        const octx = oc.getContext('2d');
+        octx.clearRect(0, 0, cw, ch);
+        octx.drawImage(img, dx, dy, dw, dh);
+        return createImageBitmap(oc).then(bm => { bitmaps[i + j] = bm; }).catch(() => null);
+      });
+      await Promise.all(promises);
+    }
   };
 
   const updateFrameOnScroll = () => {
@@ -207,12 +238,11 @@
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-    
-    if (currentFrameIndex >= 0) {
-      drawFrame(currentFrameIndex);
-    } else {
-      updateFrameOnScroll();
-    }
+    // Rebuild bitmaps at new resolution (async, non-blocking)
+    rebuildBitmaps().then(() => {
+      if (currentFrameIndex >= 0) drawFrame(currentFrameIndex);
+      else updateFrameOnScroll();
+    });
   };
 
   const preloadImages = () => {
@@ -237,8 +267,11 @@
         if (loaded === count) {
           if (loader) loader.classList.add('fade-out');
           resizeCanvas();
-          updateFrameOnScroll();
-          startRenderLoop();
+          // Build GPU bitmaps first, then start the render loop
+          rebuildBitmaps().then(() => {
+            updateFrameOnScroll();
+            startRenderLoop();
+          });
         }
       };
       img.onerror = () => {
@@ -246,8 +279,10 @@
         if (loaded === count) {
           if (loader) loader.classList.add('fade-out');
           resizeCanvas();
-          updateFrameOnScroll();
-          startRenderLoop();
+          rebuildBitmaps().then(() => {
+            updateFrameOnScroll();
+            startRenderLoop();
+          });
         }
       };
       images.push(img);
