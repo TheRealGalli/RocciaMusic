@@ -13,12 +13,10 @@
   const loaderProgress = document.getElementById('loader-progress');
 
   const isMobile = window.innerWidth <= 768;
-  const frameStep = isMobile ? 2 : 1; // Load half the frames on mobile to save memory & render faster
+  const frameStep = isMobile ? 3 : 1; // 100 frames on mobile, 300 on desktop
   const totalFrames = 300;
-  const images = [];       // raw HTMLImageElement
-  const bitmaps = [];      // GPU-resident ImageBitmap (faster drawImage, especially on mobile)
-  let loadedCount = 0;
-  let currentFrameIndex = -1;
+  const images = {}; // Map of index -> Image object
+  const loadedFrames = new Set(); // Set of loaded frame indices
 
   // Lerping animation parameters
   let targetProgress = 0;
@@ -120,70 +118,57 @@
     }, '-=120');
   };
 
-  // Draw a pre-scaled bitmap if available, otherwise fall back to raw image
+  // Helper to find the closest loaded frame to avoid blank canvas
+  const getClosestLoadedFrame = (targetIndex) => {
+    if (loadedFrames.has(targetIndex)) return targetIndex;
+    let minDiff = Infinity;
+    let closest = -1;
+    for (const idx of loadedFrames) {
+      const diff = Math.abs(idx - targetIndex);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = idx;
+      }
+    }
+    return closest;
+  };
+
   const drawFrame = (index) => {
     if (!canvas || !ctx) return;
-    const src = bitmaps[index] || images[index];
-    if (!src) return;
+    
+    // Find closest loaded frame if the requested one is still loading
+    const activeIndex = getClosestLoadedFrame(index);
+    if (activeIndex === -1) return;
+
+    const img = images[activeIndex];
+    if (!img) return;
 
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
-
-    // If using a pre-scaled bitmap, it already matches canvas size — pure blit
-    if (bitmaps[index]) {
-      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-      ctx.drawImage(bitmaps[index], 0, 0);
-      currentFrameIndex = index;
-      return;
-    }
-
-    // Fallback: scale raw image with contain logic
-    const img = src;
+    
     const imgWidth = img.naturalWidth || img.width;
     const imgHeight = img.naturalHeight || img.height;
     if (!imgWidth || !imgHeight) return;
 
     const imgRatio = imgWidth / imgHeight;
     const canvasRatio = canvasWidth / canvasHeight;
+    
     let drawWidth, drawHeight, x, y;
     if (canvasRatio > imgRatio) {
-      drawWidth = canvasHeight * imgRatio; drawHeight = canvasHeight;
-      x = (canvasWidth - drawWidth) / 2; y = 0;
+      drawWidth = canvasHeight * imgRatio;
+      drawHeight = canvasHeight;
+      x = (canvasWidth - drawWidth) / 2;
+      y = 0;
     } else {
-      drawWidth = canvasWidth; drawHeight = canvasWidth / imgRatio;
-      x = 0; y = (canvasHeight - drawHeight) / 2;
+      drawWidth = canvasWidth;
+      drawHeight = canvasWidth / imgRatio;
+      x = 0;
+      y = (canvasHeight - drawHeight) / 2;
     }
+    
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(img, x, y, drawWidth, drawHeight);
     currentFrameIndex = index;
-  };
-
-  // Pre-scale all loaded images into GPU bitmaps at current canvas resolution
-  const rebuildBitmaps = async () => {
-    if (!canvas || !('createImageBitmap' in window)) return;
-    const cw = canvas.width;
-    const ch = canvas.height;
-    // Run in small batches so the main thread isn't blocked
-    const BATCH = 10;
-    for (let i = 0; i < images.length; i += BATCH) {
-      const batch = images.slice(i, i + BATCH);
-      const promises = batch.map((img, j) => {
-        if (!img || !img.naturalWidth) return Promise.resolve(null);
-        // contain fit: calculate target draw rect
-        const ir = img.naturalWidth / img.naturalHeight;
-        const cr = cw / ch;
-        let dw, dh, dx, dy;
-        if (cr > ir) { dw = ch * ir; dh = ch; dx = (cw - dw) / 2; dy = 0; }
-        else         { dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2; }
-        // Draw onto an offscreen canvas first so we can bitmapize the full frame
-        const oc = new OffscreenCanvas(cw, ch);
-        const octx = oc.getContext('2d');
-        octx.clearRect(0, 0, cw, ch);
-        octx.drawImage(img, dx, dy, dw, dh);
-        return createImageBitmap(oc).then(bm => { bitmaps[i + j] = bm; }).catch(() => null);
-      });
-      await Promise.all(promises);
-    }
   };
 
   const updateFrameOnScroll = () => {
@@ -206,7 +191,7 @@
     const tick = () => {
       if (!rafRunning) return;
 
-      const lerpFactor = isMobile ? 0.14 : 0.10;
+      const lerpFactor = isMobile ? 0.15 : 0.10;
       currentProgress += (targetProgress - currentProgress) * lerpFactor;
 
       // Snap to target when very close to avoid endless micro-ticks
@@ -214,9 +199,14 @@
         currentProgress = targetProgress;
       }
 
-      const frameIndex = Math.min(images.length - 1, Math.floor(currentProgress * images.length));
-      if (frameIndex !== currentFrameIndex) {
-        drawFrame(frameIndex);
+      // Map progress to the loaded frame indices
+      const sortedKeys = Array.from(loadedFrames).sort((a, b) => a - b);
+      if (sortedKeys.length > 0) {
+        const indexInKeys = Math.min(sortedKeys.length - 1, Math.floor(currentProgress * sortedKeys.length));
+        const frameIndex = sortedKeys[indexInKeys];
+        if (frameIndex !== currentFrameIndex) {
+          drawFrame(frameIndex);
+        }
       }
 
       // Fade title overlay
@@ -238,55 +228,59 @@
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-    // Rebuild bitmaps at new resolution (async, non-blocking)
-    rebuildBitmaps().then(() => {
-      if (currentFrameIndex >= 0) drawFrame(currentFrameIndex);
-      else updateFrameOnScroll();
-    });
+    if (currentFrameIndex >= 0) {
+      drawFrame(currentFrameIndex);
+    } else {
+      updateFrameOnScroll();
+    }
   };
 
+  // Progressively preload all frames
   const preloadImages = () => {
-    // On mobile, only load every other frame (half the frames) to reduce memory & improve perf
-    const step = frameStep;
-    const framesToLoad = [];
-    for (let i = 1; i <= totalFrames; i += step) {
-      framesToLoad.push(i);
-    }
-    const count = framesToLoad.length;
-    let loaded = 0;
+    // 1. First, load frame 1 (or closest available index) immediately to show the hero right away
+    const firstImg = new Image();
+    const numStr = String(1).padStart(3, '0');
+    firstImg.src = `rendered_frames/frame_${numStr}.webp`;
+    firstImg.onload = () => {
+      images[1] = firstImg;
+      loadedFrames.add(1);
+      
+      // Hide loader instantly as soon as we have the first frame!
+      if (loader) loader.classList.add('fade-out');
+      resizeCanvas();
+      updateFrameOnScroll();
+      startRenderLoop();
+      
+      // 2. Load the remaining frames in the background
+      const framesToLoad = [];
+      for (let i = 1 + frameStep; i <= totalFrames; i += frameStep) {
+        framesToLoad.push(i);
+      }
+      
+      let loaded = 1;
+      const totalToLoad = framesToLoad.length + 1;
 
-    framesToLoad.forEach((frameNum) => {
-      const img = new Image();
-      const numStr = String(frameNum).padStart(3, '0');
-      img.src = `rendered_frames/frame_${numStr}.webp`;
-      img.onload = () => {
-        loaded++;
-        if (loaderProgress) {
-          loaderProgress.textContent = Math.round((loaded / count) * 100);
-        }
-        if (loaded === count) {
-          if (loader) loader.classList.add('fade-out');
-          resizeCanvas();
-          // Build GPU bitmaps first, then start the render loop
-          rebuildBitmaps().then(() => {
-            updateFrameOnScroll();
-            startRenderLoop();
-          });
-        }
-      };
-      img.onerror = () => {
-        loaded++;
-        if (loaded === count) {
-          if (loader) loader.classList.add('fade-out');
-          resizeCanvas();
-          rebuildBitmaps().then(() => {
-            updateFrameOnScroll();
-            startRenderLoop();
-          });
-        }
-      };
-      images.push(img);
-    });
+      framesToLoad.forEach((frameNum) => {
+        const img = new Image();
+        const fStr = String(frameNum).padStart(3, '0');
+        img.src = `rendered_frames/frame_${fStr}.webp`;
+        img.onload = () => {
+          images[frameNum] = img;
+          loadedFrames.add(frameNum);
+          loaded++;
+          if (loaderProgress) {
+            loaderProgress.textContent = Math.round((loaded / totalToLoad) * 100);
+          }
+        };
+        img.onerror = () => {
+          loaded++;
+        };
+      });
+    };
+    firstImg.onerror = () => {
+      // Fallback if first image fails
+      if (loader) loader.classList.add('fade-out');
+    };
   };
 
   window.addEventListener('resize', resizeCanvas);
