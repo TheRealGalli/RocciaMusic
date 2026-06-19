@@ -17,6 +17,7 @@
   const totalFrames = 300;
   const images = {}; // Map of index -> Image object
   const loadedFrames = new Set(); // Set of loaded frame indices
+  let currentFrameIndex = -1;
 
   // Lerping animation parameters
   let targetProgress = 0;
