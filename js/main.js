@@ -12,10 +12,16 @@
   const loader = document.getElementById('hero-loader');
   const loaderProgress = document.getElementById('loader-progress');
 
+  const isMobile = window.innerWidth <= 768;
+  const frameStep = isMobile ? 2 : 1; // Load half the frames on mobile to save memory & render faster
   const totalFrames = 300;
   const images = [];
   let loadedCount = 0;
   let currentFrameIndex = -1;
+
+  // Lerping animation parameters
+  let targetProgress = 0;
+  let currentProgress = 0;
 
   // Fade-in hero content (CSS handles animation)
   document.body.classList.add('parallax-active');
@@ -150,33 +156,49 @@
   };
 
   const updateFrameOnScroll = () => {
-    if (!scrollContainer || images.length < totalFrames) return;
-    
+    if (!scrollContainer) return;
+
     const rect = scrollContainer.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    
-    // Calculate progress (0 to 1) based on scroll position of the track
     const totalScrollable = rect.height - viewportHeight;
     if (totalScrollable <= 0) return;
-    
+
     const scrolled = -rect.top;
-    let progress = scrolled / totalScrollable;
-    progress = Math.max(0, Math.min(1, progress));
-    
-    const frameIndex = Math.min(totalFrames - 1, Math.floor(progress * totalFrames));
-    
-    if (frameIndex !== currentFrameIndex) {
-      requestAnimationFrame(() => drawFrame(frameIndex));
-    }
-    
-    // Handle fading of the text overlay based on progress (minimum 0.2 opacity so it doesn't disappear)
-    if (heroContent) {
-      const opacity = Math.max(0.2, 1 - progress * 1.5);
-      const translateY = -progress * 60;
-      heroContent.style.opacity = opacity;
-      heroContent.style.transform = `translateY(${translateY}px)`;
-      heroContent.style.visibility = 'visible';
-    }
+    targetProgress = Math.max(0, Math.min(1, scrolled / totalScrollable));
+  };
+
+  // Lerp-based RAF render loop: smoothly eases currentProgress toward targetProgress
+  let rafRunning = false;
+  const startRenderLoop = () => {
+    if (rafRunning) return;
+    rafRunning = true;
+    const tick = () => {
+      if (!rafRunning) return;
+
+      const lerpFactor = isMobile ? 0.14 : 0.10;
+      currentProgress += (targetProgress - currentProgress) * lerpFactor;
+
+      // Snap to target when very close to avoid endless micro-ticks
+      if (Math.abs(targetProgress - currentProgress) < 0.0005) {
+        currentProgress = targetProgress;
+      }
+
+      const frameIndex = Math.min(images.length - 1, Math.floor(currentProgress * images.length));
+      if (frameIndex !== currentFrameIndex) {
+        drawFrame(frameIndex);
+      }
+
+      // Fade title overlay
+      if (heroContent) {
+        const opacity = Math.max(0.2, 1 - currentProgress * 1.5);
+        heroContent.style.opacity = opacity;
+        heroContent.style.transform = `translateY(${-currentProgress * 60}px)`;
+        heroContent.style.visibility = 'visible';
+      }
+
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   };
 
   const resizeCanvas = () => {
@@ -194,34 +216,42 @@
   };
 
   const preloadImages = () => {
+    // On mobile, only load every other frame (half the frames) to reduce memory & improve perf
+    const step = frameStep;
+    const framesToLoad = [];
+    for (let i = 1; i <= totalFrames; i += step) {
+      framesToLoad.push(i);
+    }
+    const count = framesToLoad.length;
     let loaded = 0;
-    for (let i = 1; i <= totalFrames; i++) {
+
+    framesToLoad.forEach((frameNum) => {
       const img = new Image();
-      const numStr = String(i).padStart(3, '0');
+      const numStr = String(frameNum).padStart(3, '0');
       img.src = `rendered_frames/frame_${numStr}.webp`;
       img.onload = () => {
         loaded++;
         if (loaderProgress) {
-          loaderProgress.textContent = Math.round((loaded / totalFrames) * 100);
+          loaderProgress.textContent = Math.round((loaded / count) * 100);
         }
-        if (loaded === totalFrames) {
-          if (loader) {
-            loader.classList.add('fade-out');
-          }
+        if (loaded === count) {
+          if (loader) loader.classList.add('fade-out');
           resizeCanvas();
           updateFrameOnScroll();
+          startRenderLoop();
         }
       };
       img.onerror = () => {
         loaded++;
-        if (loaded === totalFrames) {
+        if (loaded === count) {
           if (loader) loader.classList.add('fade-out');
           resizeCanvas();
           updateFrameOnScroll();
+          startRenderLoop();
         }
       };
       images.push(img);
-    }
+    });
   };
 
   window.addEventListener('resize', resizeCanvas);

@@ -17,6 +17,11 @@ a{color:inherit}
   height: 350vh; /* Scroll track for frame-by-frame animation */
   background: #000000;
 }
+@media (max-width: 768px) {
+  .hero-scroll-container {
+    height: 180vh; /* Shorter track on mobile for quick scroll-bound animation */
+  }
+}
 .hero {
   position: sticky;
   top: 0;
