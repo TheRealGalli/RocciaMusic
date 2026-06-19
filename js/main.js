@@ -200,14 +200,10 @@
         currentProgress = targetProgress;
       }
 
-      // Map progress to the loaded frame indices
-      const sortedKeys = Array.from(loadedFrames).sort((a, b) => a - b);
-      if (sortedKeys.length > 0) {
-        const indexInKeys = Math.min(sortedKeys.length - 1, Math.floor(currentProgress * sortedKeys.length));
-        const frameIndex = sortedKeys[indexInKeys];
-        if (frameIndex !== currentFrameIndex) {
-          drawFrame(frameIndex);
-        }
+      // Map progress directly to the timeline frame index (1 to 300)
+      const frameIndex = Math.min(totalFrames, Math.max(1, Math.floor(currentProgress * totalFrames)));
+      if (frameIndex !== currentFrameIndex) {
+        drawFrame(frameIndex);
       }
 
       // Fade title overlay
