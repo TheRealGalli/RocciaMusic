@@ -11,14 +11,119 @@
 img{max-width:100%;display:block}
 a{color:inherit}
 
-/* HERO */
-.hero{isolation:isolate}
-.hero-bg{position:absolute; inset:0; background:url('../assets/images/hero-bg.jpg') center/cover no-repeat; transform:translateZ(0); will-change:transform;}
-.hero-overlay{position:absolute; inset:0; background:linear-gradient(180deg, rgba(10,14,39,.8) 0%, rgba(10,14,39,.35) 40%, rgba(10,14,39,.9) 100%);} 
-.hero-content{position:relative; z-index:1; padding:var(--spacing-md); border-radius:var(--radius-lg); background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06)); border:1px solid var(--glass-border); box-shadow:var(--shadow-md);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); animation: fadeUp .9s ease both .15s;}
-.hero .brand{font-size:clamp(2rem,7vw,4rem); letter-spacing:.02em; margin:0 0 .25em; text-shadow:0 1px 0 rgba(0,0,0,.4)}
-.hero .subtitle{opacity:.9; margin:0; font-size:clamp(1rem,2.8vw,1.25rem)}
+/* HERO SCROLL ANIMATION */
+.hero-scroll-container {
+  position: relative;
+  height: 350vh; /* Scroll track for frame-by-frame animation */
+  background: #000000;
+}
+.hero {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  isolation: isolate;
+}
+.hero-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: #000000;
+  /* Smooth vignette edge dissolve */
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+}
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, transparent 35%, rgba(0,0,0,0.85) 100%), linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+.hero-content {
+  position: relative;
+  z-index: 3;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-lg);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  animation: fadeUp .9s ease both .15s;
+  pointer-events: none;
+  max-width: min(500px, 90%);
+  text-align: center;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.hero .brand {
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  letter-spacing: .05em;
+  margin: 0 0 .25em;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  color: #fff;
+  font-weight: 800;
+}
+.hero .subtitle {
+  opacity: .8;
+  margin: 0;
+  font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--secondary);
+}
+
+/* HERO LOADER */
+.hero-loader {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  color: var(--light);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.6s;
+}
+.hero-loader.fade-out {
+  opacity: 0;
+  visibility: hidden;
+}
+.hero-loader .spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(0, 217, 255, 0.15);
+  border-top: 3px solid var(--secondary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--spacing-sm);
+}
+.hero-loader p {
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0;
+  font-family: inherit;
+  color: #8fa0b0;
+}
+#loader-progress {
+  color: var(--secondary);
+  font-weight: bold;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
 /* HEADER fixed */
 .site-header{position:sticky; top:0; z-index:1000; background:#0dbb4c; color:#042b12; box-shadow:0 2px 10px rgba(0,0,0,.35)}
@@ -59,16 +164,14 @@ a{color:inherit}
 /* removed bubbles rise */
 
 /* Mobile responsive tweaks */
-@media (max-width: 640px){
-  .hero{ min-height: 86vh }
+@media (max-width: 640px) {
   .hero-content{ padding: var(--spacing-sm); border-radius: var(--radius-md) }
-  .hero .brand{ font-size: clamp(1.75rem, 11vw, 2.5rem) }
+  .hero .brand{ font-size: clamp(2rem, 12vw, 3rem) }
   .site-header .container{ min-height:48px }
   .site-title{ font-size: 0.95rem }
   .music-section{ padding: var(--spacing-md) 0 var(--spacing-lg) }
   .players-grid{ gap: var(--spacing-sm) }
   .sc-frame{ height: 240px }
-  .fx-lightning{ opacity:.8 }
 }
 
 /* FOOTER */
