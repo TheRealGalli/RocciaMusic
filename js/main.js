@@ -240,7 +240,8 @@
     // 1. First, load frame 1 (or closest available index) immediately to show the hero right away
     const firstImg = new Image();
     const numStr = String(1).padStart(3, '0');
-    firstImg.src = `rendered_frames/frame_${numStr}.webp`;
+    
+    // Set onload BEFORE src to prevent cache race conditions
     firstImg.onload = () => {
       images[1] = firstImg;
       loadedFrames.add(1);
@@ -266,7 +267,7 @@
       framesToLoad.forEach((frameNum) => {
         const img = new Image();
         const fStr = String(frameNum).padStart(3, '0');
-        img.src = `rendered_frames/frame_${fStr}.webp`;
+        
         img.onload = () => {
           images[frameNum] = img;
           loadedFrames.add(frameNum);
@@ -278,12 +279,17 @@
         img.onerror = () => {
           loaded++;
         };
+        
+        img.src = `rendered_frames/frame_${fStr}.webp`;
       });
     };
+    
     firstImg.onerror = () => {
       // Fallback if first image fails
       if (loader) loader.classList.add('fade-out');
     };
+    
+    firstImg.src = `rendered_frames/frame_${numStr}.webp`;
   };
 
   window.addEventListener('resize', resizeCanvas);
