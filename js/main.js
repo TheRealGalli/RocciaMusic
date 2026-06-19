@@ -13,10 +13,11 @@
   const loaderProgress = document.getElementById('loader-progress');
 
   const isMobile = window.innerWidth <= 768;
-  const frameStep = isMobile ? 3 : 1; // 100 frames on mobile, 300 on desktop
+  const frameStep = isMobile ? 3 : 1; // Load 100 frames on mobile, 300 on desktop
   const totalFrames = 300;
-  const images = {}; // Map of index -> Image object
-  const loadedFrames = new Set(); // Set of loaded frame indices
+  
+  const images = []; // Array of preloaded Image objects
+  const loadedIndices = new Set(); // Set of loaded image indices
   let currentFrameIndex = -1;
 
   // Lerping animation parameters
@@ -120,11 +121,11 @@
   };
 
   // Helper to find the closest loaded frame to avoid blank canvas
-  const getClosestLoadedFrame = (targetIndex) => {
-    if (loadedFrames.has(targetIndex)) return targetIndex;
+  const getClosestLoadedFrameIndex = (targetIndex) => {
+    if (loadedIndices.has(targetIndex)) return targetIndex;
     let minDiff = Infinity;
     let closest = -1;
-    for (const idx of loadedFrames) {
+    for (const idx of loadedIndices) {
       const diff = Math.abs(idx - targetIndex);
       if (diff < minDiff) {
         minDiff = diff;
@@ -134,26 +135,39 @@
     return closest;
   };
 
+  // Auto-resizing draw function
   const drawFrame = (index) => {
     if (!canvas || !ctx) return;
-    
-    // Find closest loaded frame if the requested one is still loading
-    const activeIndex = getClosestLoadedFrame(index);
+
+    // Find the closest loaded index
+    const activeIndex = getClosestLoadedFrameIndex(index);
     if (activeIndex === -1) return;
 
     const img = images[activeIndex];
     if (!img) return;
 
+    // Dynamically check/update canvas size to prevent 0px rendering bugs
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const targetWidth = Math.floor(rect.width * dpr);
+    const targetHeight = Math.floor(rect.height * dpr);
+
+    if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+    }
+
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
-    
+    if (canvasWidth === 0 || canvasHeight === 0) return;
+
     const imgWidth = img.naturalWidth || img.width;
     const imgHeight = img.naturalHeight || img.height;
     if (!imgWidth || !imgHeight) return;
 
     const imgRatio = imgWidth / imgHeight;
     const canvasRatio = canvasWidth / canvasHeight;
-    
+
     let drawWidth, drawHeight, x, y;
     if (canvasRatio > imgRatio) {
       drawWidth = canvasHeight * imgRatio;
@@ -166,7 +180,7 @@
       x = 0;
       y = (canvasHeight - drawHeight) / 2;
     }
-    
+
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(img, x, y, drawWidth, drawHeight);
     currentFrameIndex = index;
@@ -184,7 +198,7 @@
     targetProgress = Math.max(0, Math.min(1, scrolled / totalScrollable));
   };
 
-  // Lerp-based RAF render loop: smoothly eases currentProgress toward targetProgress
+  // Lerp-based RAF render loop
   let rafRunning = false;
   const startRenderLoop = () => {
     if (rafRunning) return;
@@ -195,18 +209,15 @@
       const lerpFactor = isMobile ? 0.15 : 0.10;
       currentProgress += (targetProgress - currentProgress) * lerpFactor;
 
-      // Snap to target when very close to avoid endless micro-ticks
       if (Math.abs(targetProgress - currentProgress) < 0.0005) {
         currentProgress = targetProgress;
       }
 
-      // Map progress directly to the timeline frame index (1 to 300)
       const frameIndex = Math.min(totalFrames, Math.max(1, Math.floor(currentProgress * totalFrames)));
       if (frameIndex !== currentFrameIndex) {
         drawFrame(frameIndex);
       }
 
-      // Fade title overlay
       if (heroContent) {
         const opacity = Math.max(0.2, 1 - currentProgress * 1.5);
         heroContent.style.opacity = opacity;
@@ -220,11 +231,6 @@
   };
 
   const resizeCanvas = () => {
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
     if (currentFrameIndex >= 0) {
       drawFrame(currentFrameIndex);
     } else {
@@ -234,59 +240,50 @@
 
   // Progressively preload all frames
   const preloadImages = () => {
-    // 1. First, load frame 1 (or closest available index) immediately to show the hero right away
+    // 1. Load frame 1 immediately to show the hero right away
     const firstImg = new Image();
-    const numStr = String(1).padStart(3, '0');
-    
-    // Set onload BEFORE src to prevent cache race conditions
     firstImg.onload = () => {
       images[1] = firstImg;
-      loadedFrames.add(1);
-      
-      // Hide loader instantly as soon as we have the first frame!
+      loadedIndices.add(1);
+
+      // Hide loader instantly
       if (loader) loader.classList.add('fade-out');
       
-      requestAnimationFrame(() => {
-        resizeCanvas();
-        updateFrameOnScroll();
-        startRenderLoop();
-      });
-      
+      // Initial draw
+      drawFrame(1);
+      startRenderLoop();
+
       // 2. Load the remaining frames in the background
       const framesToLoad = [];
       for (let i = 1 + frameStep; i <= totalFrames; i += frameStep) {
         framesToLoad.push(i);
       }
-      
-      let loaded = 1;
+
+      let loadedCount = 1;
       const totalToLoad = framesToLoad.length + 1;
 
       framesToLoad.forEach((frameNum) => {
         const img = new Image();
-        const fStr = String(frameNum).padStart(3, '0');
-        
         img.onload = () => {
           images[frameNum] = img;
-          loadedFrames.add(frameNum);
-          loaded++;
+          loadedIndices.add(frameNum);
+          loadedCount++;
           if (loaderProgress) {
-            loaderProgress.textContent = Math.round((loaded / totalToLoad) * 100);
+            loaderProgress.textContent = Math.round((loadedCount / totalToLoad) * 100);
           }
         };
         img.onerror = () => {
-          loaded++;
+          loadedCount++;
         };
-        
-        img.src = `rendered_frames/frame_${fStr}.webp`;
+        img.src = `rendered_frames/frame_${String(frameNum).padStart(3, '0')}.webp`;
       });
     };
-    
+
     firstImg.onerror = () => {
-      // Fallback if first image fails
       if (loader) loader.classList.add('fade-out');
     };
-    
-    firstImg.src = `rendered_frames/frame_${numStr}.webp`;
+
+    firstImg.src = `rendered_frames/frame_001.webp`;
   };
 
   window.addEventListener('resize', resizeCanvas);
@@ -298,11 +295,8 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  // Kick everything immediately instead of waiting for window.onload (which waits for slow SoundCloud embeds)
+  // Run immediately
   runIntro();
   preloadImages();
-  // Safety fallback: auto-hide intro after 2.5s
   setTimeout(() => { if (intro && !intro.classList.contains('is-hidden')) intro.classList.add('is-hidden'); }, 2500);
 })();
-
-
