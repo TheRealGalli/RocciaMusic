@@ -132,7 +132,8 @@ a{color:inherit}
 
 /* HEADER fixed */
 .site-header{position:sticky; top:0; z-index:1000; background:#0dbb4c; color:#042b12; box-shadow:0 2px 10px rgba(0,0,0,.35)}
-.site-header .container{display:flex; align-items:center; justify-content:center; min-height:56px}
+.site-header .container{display:flex; align-items:center; justify-content:center; min-height:56px; gap:10px}
+.site-logo{height:32px; width:auto; border-radius:4px; object-fit:contain}
 .site-title{margin:0; font-weight:700; letter-spacing:.02em; text-align:center}
 
 /* Lightning canvas */
