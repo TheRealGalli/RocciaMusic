@@ -132,11 +132,11 @@ a{color:inherit}
 
 /* HEADER fixed */
 .site-header{position:sticky; top:0; z-index:1000; background:#0dbb4c; color:#042b12; box-shadow:0 2px 10px rgba(0,0,0,.35)}
-.site-header .container{display:flex; align-items:center; justify-content:space-between; min-height:56px; gap:16px}
-.header-brand{display:flex; align-items:center; gap:10px}
+.site-header .container{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; min-height:56px; gap:16px}
+.header-brand{display:flex; align-items:center; gap:10px; justify-content:center; grid-column:2}
 .site-logo{height:32px; width:auto; border-radius:4px; object-fit:contain}
-.site-title{margin:0; font-weight:700; letter-spacing:.02em; text-align:left}
-.header-socials{display:flex; align-items:center; gap:14px}
+.site-title{margin:0; font-weight:700; letter-spacing:.02em; text-align:center}
+.header-socials{display:flex; align-items:center; gap:14px; justify-content:flex-end; grid-column:3}
 .header-socials a{display:inline-flex; align-items:center; justify-content:center; color:#042b12; transition:color 0.2s ease, transform 0.2s ease; text-decoration:none; line-height:1}
 .header-socials a:hover, .header-socials a:focus-visible{color:#ffffff; transform:scale(1.15)}
 
