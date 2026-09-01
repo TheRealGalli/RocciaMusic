@@ -51,12 +51,14 @@
       </div>
     </header>
     <main>
-      <!-- Hero Section with transparent looping video -->
+      <!-- Hero Section with transparent video loop -->
       <section class="hero" aria-label="Hero RocciaMusic">
-        <!-- Looping video element replacing sword canvas -->
-        <video class="hero-video" id="hero-video" autoplay loop muted playsinline aria-hidden="true">
+        <!-- Hidden video element loaded by JS -->
+        <video id="hero-video" autoplay loop muted playsinline preload="auto" style="display:none;" aria-hidden="true">
           <source src="video_trasparente.webm" type="video/webm" />
         </video>
+        <!-- Canvas to render the transparent video frames cleanly -->
+        <canvas id="hero-canvas" class="hero-canvas" aria-hidden="true"></canvas>
         <div class="hero-overlay" aria-hidden="true"></div>
 
         <div class="hero-content" role="region" aria-label="Titolo">

@@ -2,6 +2,7 @@
 (function(){
   const root = document.documentElement;
   const heroVideo = document.getElementById('hero-video');
+  const heroCanvas = document.getElementById('hero-canvas');
   const frames = Array.from(document.querySelectorAll('iframe.sc-frame'));
   const intro = document.getElementById('intro');
   const slash = intro ? intro.querySelector('.slash') : null;
@@ -9,50 +10,66 @@
   // Active parallax state
   document.body.classList.add('parallax-active');
 
-  // --- HERO VIDEO LOOP AUTOMATION ---
-  if (heroVideo) {
-    // Force muted & playsinline for autoplay compliance across browsers/iOS
+  // --- HERO VIDEO → CANVAS RENDERING ---
+  if (heroVideo && heroCanvas) {
+    const ctx = heroCanvas.getContext('2d');
     heroVideo.muted = true;
     heroVideo.playsInline = true;
 
-    const playVideo = () => {
-      const promise = heroVideo.play();
-      if (promise !== undefined) {
-        promise.catch(err => {
-          console.warn('Hero video autoplay prevented or delayed:', err);
-          // Try playing again on user interaction if blocked
-          const resumeOnInteraction = () => {
-            heroVideo.play();
-            window.removeEventListener('click', resumeOnInteraction);
-            window.removeEventListener('touchstart', resumeOnInteraction);
-          };
-          window.addEventListener('click', resumeOnInteraction);
-          window.addEventListener('touchstart', resumeOnInteraction);
-        });
-      }
+    const syncCanvasSize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = heroCanvas.getBoundingClientRect();
+      heroCanvas.width = Math.round(rect.width * dpr);
+      heroCanvas.height = Math.round(rect.height * dpr);
     };
+    window.addEventListener('resize', syncCanvasSize);
 
-    // Trigger video playback immediately and on metadata load
-    playVideo();
-    heroVideo.addEventListener('loadeddata', playVideo);
+    const drawVideoFrame = () => {
+      if (!heroVideo.paused && !heroVideo.ended && heroVideo.readyState >= 2) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const vw = heroVideo.videoWidth;
+        const vh = heroVideo.videoHeight;
+        if (!vw || !vh) { requestAnimationFrame(drawVideoFrame); return; }
 
-    // Precise loop trigger to prevent end-pause hiccup
-    const checkSeamlessLoop = () => {
-      if (heroVideo && !heroVideo.paused && heroVideo.duration) {
-        // Trim off end freeze (0.4s cutoff) for seamless continuous motion
-        if (heroVideo.currentTime >= heroVideo.duration - 0.4) {
+        const cw = heroCanvas.width;
+        const ch = heroCanvas.height;
+        const scale = Math.min(cw / vw, ch / vh);
+        const dw = vw * scale;
+        const dh = vh * scale;
+        const dx = (cw - dw) / 2;
+        const dy = (ch - dh) / 2;
+
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.drawImage(heroVideo, dx, dy, dw, dh);
+
+        // Seamless loop: reset 0.4s before end
+        if (heroVideo.duration && heroVideo.currentTime >= heroVideo.duration - 0.4) {
           heroVideo.currentTime = 0.01;
         }
       }
-      requestAnimationFrame(checkSeamlessLoop);
+      requestAnimationFrame(drawVideoFrame);
     };
-    requestAnimationFrame(checkSeamlessLoop);
 
-    // Backup ended event listener
-    heroVideo.addEventListener('ended', () => {
-      heroVideo.currentTime = 0.01;
-      playVideo();
-    });
+    const startPlayback = () => {
+      syncCanvasSize();
+      const promise = heroVideo.play();
+      if (promise !== undefined) {
+        promise.catch(() => {
+          const resume = () => {
+            heroVideo.play();
+            window.removeEventListener('click', resume);
+            window.removeEventListener('touchstart', resume);
+          };
+          window.addEventListener('click', resume);
+          window.addEventListener('touchstart', resume);
+        });
+      }
+      drawVideoFrame();
+    };
+
+    heroVideo.addEventListener('loadeddata', startPlayback);
+    heroVideo.addEventListener('ended', () => { heroVideo.currentTime = 0.01; heroVideo.play(); });
+    startPlayback();
   }
 
   // --- COOKIE CONSENT LOGIC ---

@@ -25,18 +25,16 @@ a{color:inherit}
   overflow: hidden;
   isolation: isolate;
 }
-.hero-video {
+.hero-canvas {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(480px, 85vw);
-  height: auto;
-  max-height: 55vh;
-  object-fit: contain;
+  width: min(520px, 88vw);
+  height: min(520px, 88vw);
   z-index: 1;
   pointer-events: none;
-  opacity: 0.95;
+  background: transparent;
 }
 .hero-overlay {
   position: absolute;
@@ -98,39 +96,35 @@ a{color:inherit}
 }
 .giradischi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 50px 30px;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px 24px;
   justify-items: center;
   align-items: center;
 }
 @media (min-width: 900px) {
   .giradischi-grid {
     grid-template-columns: repeat(3, 1fr);
+    gap: 56px 32px;
   }
 }
 .giradischi-item {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: transparent;
-  border: none;
-  padding: 10px;
   width: 100%;
+  cursor: pointer;
 }
 .giradischi-img {
   width: 100%;
-  max-width: 280px;
+  max-width: 340px;
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9));
   transition: filter 0.35s ease;
-  transform: none !important;
-  cursor: pointer;
+  display: block;
 }
-.giradischi-item:hover .giradischi-img,
-.giradischi-img:hover {
-  transform: none !important;
-  filter: drop-shadow(0 0 25px rgba(230, 0, 30, 0.95)) drop-shadow(0 0 50px rgba(180, 0, 0, 0.65));
+.giradischi-item:hover .giradischi-img {
+  filter: drop-shadow(0 0 20px rgba(230, 0, 30, 1)) drop-shadow(0 0 45px rgba(200, 0, 0, 0.8)) drop-shadow(0 0 80px rgba(160, 0, 0, 0.5));
 }
 
 /* Reduced motion */
