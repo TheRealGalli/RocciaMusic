@@ -30,41 +30,42 @@ a{color:inherit}
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(180px, 45vw);
+  width: min(480px, 85vw);
   height: auto;
-  max-height: 25vh;
+  max-height: 55vh;
   object-fit: contain;
   z-index: 1;
   pointer-events: none;
+  opacity: 0.95;
 }
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.85) 100%), linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%);
+  background: radial-gradient(circle at center, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.85) 100%), linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.85) 100%);
   z-index: 2;
   pointer-events: none;
 }
 .hero-content {
   position: relative;
   z-index: 3;
-  padding: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-lg);
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   animation: fadeUp .9s ease both .15s;
   pointer-events: none;
-  max-width: min(500px, 90%);
+  max-width: min(450px, 90%);
   text-align: center;
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 .hero .brand {
   font-size: clamp(2.5rem, 8vw, 4.5rem);
   letter-spacing: .05em;
-  margin: 0 0 .25em;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  margin: 0;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.95), 0 0 30px rgba(0,0,0,0.9);
   color: #fff;
   font-weight: 800;
 }
@@ -90,46 +91,47 @@ a{color:inherit}
 /* Lightning canvas */
 .fx-lightning{position:absolute; inset:0; z-index:2; pointer-events:none; mix-blend-mode:screen; opacity:.9;}
 
-/* SECTION MUSIC */
-.music-section{padding:var(--spacing-lg) 0}
-.music-section h2{font-size:clamp(1.25rem,2.5vw,1.75rem); letter-spacing:.08em; text-transform:uppercase}
-.players-grid{margin-top:var(--spacing-md); display:grid; gap:var(--spacing-md); grid-template-columns:1fr}
-@media (min-width: 860px){ .players-grid{ grid-template-columns: 1fr 1fr; } }
-
-.player-card{position:relative; border-radius:var(--radius-lg); background:rgba(255,255,255,.04); border:1px solid var(--glass-border); overflow:hidden; box-shadow:var(--shadow-sm); transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;}
-.player-card:hover{ transform:scale(1.02); box-shadow:var(--shadow-glow); border-color:rgba(0,217,255,.45); }
-.player-card:focus-within{ outline:2px solid color-mix(in oklab, var(--primary), white 15%); outline-offset:2px }
-
-.giradischi-header {
+/* GIRADISCHI SECTION - Standalone grid on black background */
+.giradischi-section {
+  padding: var(--spacing-xl) 0;
+  background: #000000;
+}
+.giradischi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 50px 30px;
+  justify-items: center;
+  align-items: center;
+}
+@media (min-width: 900px) {
+  .giradischi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.giradischi-item {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px 16px 12px 16px;
-  background: radial-gradient(circle at center, rgba(0, 217, 255, 0.08) 0%, rgba(0, 0, 0, 0.75) 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  border: none;
+  padding: 10px;
+  width: 100%;
 }
 .giradischi-img {
-  width: 150px;
-  height: 150px;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.8));
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9));
+  transition: filter 0.35s ease;
+  transform: none !important;
+  cursor: pointer;
 }
-.player-card:hover .giradischi-img {
-  transform: scale(1.08) rotate(4deg);
-  filter: drop-shadow(0 10px 24px rgba(0, 217, 255, 0.4));
+.giradischi-item:hover .giradischi-img,
+.giradischi-img:hover {
+  transform: none !important;
+  filter: drop-shadow(0 0 25px rgba(230, 0, 30, 0.95)) drop-shadow(0 0 50px rgba(180, 0, 0, 0.65));
 }
-
-.glow-border{display:none}
-
-.sc-frame{display:block; width:100%; height:260px; border:0; background:#000000; border-radius:0 0 calc(var(--radius-lg) - 2px) calc(var(--radius-lg) - 2px); position: relative; }
-.sc-frame::before { content: 'Accetta i cookie per l\'audio'; position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,0.4); font-size: 0.85rem; pointer-events: none; }
-
-/* UI polish */
-.music-section{padding:calc(var(--spacing-lg) + 12px) 0 var(--spacing-xl)}
-.players-grid{gap:calc(var(--spacing-md) + 4px)}
-.player-card:hover{ transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.35); border-color:rgba(0,217,255,.25); }
-.music-section h2{letter-spacing:.12em}
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce){
