@@ -36,9 +36,21 @@
     playVideo();
     heroVideo.addEventListener('loadeddata', playVideo);
 
-    // Ensure seamless loop playback without gaps
+    // Precise loop trigger to prevent end-pause hiccup
+    const checkSeamlessLoop = () => {
+      if (heroVideo && !heroVideo.paused && heroVideo.duration) {
+        // Trim off end freeze (0.4s cutoff) for seamless continuous motion
+        if (heroVideo.currentTime >= heroVideo.duration - 0.4) {
+          heroVideo.currentTime = 0.01;
+        }
+      }
+      requestAnimationFrame(checkSeamlessLoop);
+    };
+    requestAnimationFrame(checkSeamlessLoop);
+
+    // Backup ended event listener
     heroVideo.addEventListener('ended', () => {
-      heroVideo.currentTime = 0;
+      heroVideo.currentTime = 0.01;
       playVideo();
     });
   }
