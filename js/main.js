@@ -15,6 +15,21 @@
     const ctx = heroCanvas.getContext('2d');
     heroVideo.muted = true;
     heroVideo.playsInline = true;
+    let isHeroVisible = true;
+
+    // Pause canvas drawing loop when hero is not in viewport to save mobile CPU/GPU
+    if ('IntersectionObserver' in window) {
+      const heroObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          isHeroVisible = entry.isIntersecting;
+          if (isHeroVisible && heroVideo.paused) {
+            heroVideo.play().catch(() => {});
+          }
+        }
+      }, { threshold: 0.05 });
+      const heroSection = document.querySelector('.hero');
+      if (heroSection) heroObserver.observe(heroSection);
+    }
 
     const syncCanvasSize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -25,26 +40,25 @@
     window.addEventListener('resize', syncCanvasSize);
 
     const drawVideoFrame = () => {
-      if (!heroVideo.paused && !heroVideo.ended && heroVideo.readyState >= 2) {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (isHeroVisible && !heroVideo.paused && !heroVideo.ended && heroVideo.readyState >= 2) {
         const vw = heroVideo.videoWidth;
         const vh = heroVideo.videoHeight;
-        if (!vw || !vh) { requestAnimationFrame(drawVideoFrame); return; }
+        if (vw && vh) {
+          const cw = heroCanvas.width;
+          const ch = heroCanvas.height;
+          const scale = Math.min(cw / vw, ch / vh);
+          const dw = vw * scale;
+          const dh = vh * scale;
+          const dx = (cw - dw) / 2;
+          const dy = (ch - dh) / 2;
 
-        const cw = heroCanvas.width;
-        const ch = heroCanvas.height;
-        const scale = Math.min(cw / vw, ch / vh);
-        const dw = vw * scale;
-        const dh = vh * scale;
-        const dx = (cw - dw) / 2;
-        const dy = (ch - dh) / 2;
+          ctx.clearRect(0, 0, cw, ch);
+          ctx.drawImage(heroVideo, dx, dy, dw, dh);
 
-        ctx.clearRect(0, 0, cw, ch);
-        ctx.drawImage(heroVideo, dx, dy, dw, dh);
-
-        // Seamless loop: reset 0.4s before end
-        if (heroVideo.duration && heroVideo.currentTime >= heroVideo.duration - 0.4) {
-          heroVideo.currentTime = 0.01;
+          // Seamless loop: reset 0.4s before end
+          if (heroVideo.duration && heroVideo.currentTime >= heroVideo.duration - 0.4) {
+            heroVideo.currentTime = 0.01;
+          }
         }
       }
       requestAnimationFrame(drawVideoFrame);
@@ -56,7 +70,7 @@
       if (promise !== undefined) {
         promise.catch(() => {
           const resume = () => {
-            heroVideo.play();
+            heroVideo.play().catch(() => {});
             window.removeEventListener('click', resume);
             window.removeEventListener('touchstart', resume);
           };
@@ -68,7 +82,7 @@
     };
 
     heroVideo.addEventListener('loadeddata', startPlayback);
-    heroVideo.addEventListener('ended', () => { heroVideo.currentTime = 0.01; heroVideo.play(); });
+    heroVideo.addEventListener('ended', () => { heroVideo.currentTime = 0.01; heroVideo.play().catch(() => {}); });
     startPlayback();
   }
 

@@ -91,20 +91,23 @@ a{color:inherit}
 
 /* GIRADISCHI SECTION - Standalone grid on black background */
 .giradischi-section {
-  padding: var(--spacing-xl) 0;
+  padding: 40px 0 100px 0;
   background: #000000;
 }
 .giradischi-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px 24px;
+  gap: 48px 24px;
   justify-items: center;
   align-items: center;
 }
 @media (min-width: 900px) {
+  .giradischi-section {
+    padding: 60px 0 120px 0;
+  }
   .giradischi-grid {
     grid-template-columns: repeat(3, 1fr);
-    gap: 56px 32px;
+    gap: 60px 36px;
   }
 }
 .giradischi-item {
@@ -116,7 +119,7 @@ a{color:inherit}
 }
 .giradischi-img {
   width: 100%;
-  max-width: 340px;
+  max-width: 320px;
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9));
@@ -142,9 +145,9 @@ a{color:inherit}
   .hero .brand{ font-size: clamp(2rem, 12vw, 3rem) }
   .site-header .container{ min-height:48px }
   .site-title{ font-size: 0.95rem }
-  .music-section{ padding: var(--spacing-md) 0 var(--spacing-lg) }
-  .players-grid{ gap: var(--spacing-sm) }
-  .sc-frame{ height: 240px }
+  .giradischi-section{ padding: 24px 0 60px 0 }
+  .giradischi-grid{ gap: 32px 14px }
+  .giradischi-img{ max-width: 175px }
 }
 
 /* FOOTER */
