@@ -17,7 +17,33 @@
     heroVideo.playsInline = true;
     let isHeroVisible = true;
 
-    // Pause canvas drawing loop when hero is not in viewport to save mobile CPU/GPU
+    // Load lightweight 19KB poster image for instant 0ms display on mobile
+    const posterImg = new Image();
+    let posterLoaded = false;
+    posterImg.onload = () => {
+      posterLoaded = true;
+      syncCanvasSize();
+      drawPoster();
+    };
+    posterImg.src = 'hero_poster.webp';
+
+    const drawPoster = () => {
+      if (!posterLoaded || (heroVideo && !heroVideo.paused && heroVideo.readyState >= 2)) return;
+      const cw = heroCanvas.width;
+      const ch = heroCanvas.height;
+      if (!cw || !ch) return;
+      const iw = posterImg.naturalWidth || 892;
+      const ih = posterImg.naturalHeight || 690;
+      const scale = Math.min(cw / iw, ch / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (cw - dw) / 2;
+      const dy = (ch - dh) / 2;
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(posterImg, dx, dy, dw, dh);
+    };
+
+    // Pause canvas drawing loop when hero is out of viewport to save mobile CPU/GPU
     if ('IntersectionObserver' in window) {
       const heroObserver = new IntersectionObserver((entries) => {
         for (const entry of entries) {
@@ -26,7 +52,7 @@
             heroVideo.play().catch(() => {});
           }
         }
-      }, { threshold: 0.05 });
+      }, { threshold: 0.01 });
       const heroSection = document.querySelector('.hero');
       if (heroSection) heroObserver.observe(heroSection);
     }
@@ -34,31 +60,40 @@
     const syncCanvasSize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = heroCanvas.getBoundingClientRect();
-      heroCanvas.width = Math.round(rect.width * dpr);
-      heroCanvas.height = Math.round(rect.height * dpr);
+      if (rect.width > 0 && rect.height > 0) {
+        heroCanvas.width = Math.round(rect.width * dpr);
+        heroCanvas.height = Math.round(rect.height * dpr);
+      }
     };
-    window.addEventListener('resize', syncCanvasSize);
+    window.addEventListener('resize', () => {
+      syncCanvasSize();
+      if (heroVideo.paused) drawPoster();
+    });
 
     const drawVideoFrame = () => {
-      if (isHeroVisible && !heroVideo.paused && !heroVideo.ended && heroVideo.readyState >= 2) {
-        const vw = heroVideo.videoWidth;
-        const vh = heroVideo.videoHeight;
-        if (vw && vh) {
-          const cw = heroCanvas.width;
-          const ch = heroCanvas.height;
-          const scale = Math.min(cw / vw, ch / vh);
-          const dw = vw * scale;
-          const dh = vh * scale;
-          const dx = (cw - dw) / 2;
-          const dy = (ch - dh) / 2;
+      if (isHeroVisible) {
+        if (!heroVideo.paused && !heroVideo.ended && heroVideo.readyState >= 2) {
+          const vw = heroVideo.videoWidth;
+          const vh = heroVideo.videoHeight;
+          if (vw && vh) {
+            const cw = heroCanvas.width;
+            const ch = heroCanvas.height;
+            const scale = Math.min(cw / vw, ch / vh);
+            const dw = vw * scale;
+            const dh = vh * scale;
+            const dx = (cw - dw) / 2;
+            const dy = (ch - dh) / 2;
 
-          ctx.clearRect(0, 0, cw, ch);
-          ctx.drawImage(heroVideo, dx, dy, dw, dh);
+            ctx.clearRect(0, 0, cw, ch);
+            ctx.drawImage(heroVideo, dx, dy, dw, dh);
 
-          // Seamless loop: reset 0.4s before end
-          if (heroVideo.duration && heroVideo.currentTime >= heroVideo.duration - 0.4) {
-            heroVideo.currentTime = 0.01;
+            // Seamless loop: reset 0.4s before end
+            if (heroVideo.duration && heroVideo.currentTime >= heroVideo.duration - 0.4) {
+              heroVideo.currentTime = 0.01;
+            }
           }
+        } else if (posterLoaded && heroVideo.paused) {
+          drawPoster();
         }
       }
       requestAnimationFrame(drawVideoFrame);
@@ -66,6 +101,7 @@
 
     const startPlayback = () => {
       syncCanvasSize();
+      drawPoster();
       const promise = heroVideo.play();
       if (promise !== undefined) {
         promise.catch(() => {
@@ -73,9 +109,11 @@
             heroVideo.play().catch(() => {});
             window.removeEventListener('click', resume);
             window.removeEventListener('touchstart', resume);
+            window.removeEventListener('pointerdown', resume);
           };
           window.addEventListener('click', resume);
           window.addEventListener('touchstart', resume);
+          window.addEventListener('pointerdown', resume);
         });
       }
       drawVideoFrame();
@@ -83,7 +121,13 @@
 
     heroVideo.addEventListener('loadeddata', startPlayback);
     heroVideo.addEventListener('ended', () => { heroVideo.currentTime = 0.01; heroVideo.play().catch(() => {}); });
-    startPlayback();
+    
+    // Force immediate start on load & DOMReady
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', startPlayback);
+    } else {
+      startPlayback();
+    }
   }
 
   // --- COOKIE CONSENT LOGIC ---
