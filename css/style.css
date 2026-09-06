@@ -279,8 +279,23 @@ a{color:inherit}
   .site-header .container{ min-height:48px }
   .site-title{ font-size: 0.95rem }
   .giradischi-section{ padding: 24px 0 60px 0 }
-  .giradischi-grid{ gap: 32px 14px }
+  .giradischi-grid{ gap: 36px 12px }
   .giradischi-img{ max-width: 175px }
+  .track-title {
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    margin: 12px 0 8px 0;
+    line-height: 1.25;
+  }
+  .track-player {
+    padding: 5px 10px 5px 6px;
+    gap: 8px;
+    border-radius: 20px;
+  }
+  .track-play-btn {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 /* FOOTER */
