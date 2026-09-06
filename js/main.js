@@ -149,10 +149,6 @@
     const durationEl = item.querySelector('.track-time-duration');
     const vinylWrap = item.querySelector('.giradischi-vinyl-wrap');
 
-    let simInterval = null;
-    let simCurrentTime = 0;
-    const simDuration = 160; // 2m 40s preview duration
-
     const updatePlayState = (isPlaying) => {
       if (isPlaying) {
         item.classList.add('is-playing');
@@ -164,41 +160,42 @@
     };
 
     const stopTrack = () => {
-      if (audio && audio.src) {
-        audio.pause();
-      }
-      if (simInterval) {
-        clearInterval(simInterval);
-        simInterval = null;
-      }
+      if (audio) audio.pause();
       updatePlayState(false);
     };
+    item._stopTrack = stopTrack;
 
-    const startSim = () => {
-      if (durationEl && durationEl.textContent === '0:00') {
-        durationEl.textContent = formatTime(simDuration);
-      }
-      if (simInterval) clearInterval(simInterval);
-      simInterval = setInterval(() => {
-        simCurrentTime += 1;
-        if (simCurrentTime > simDuration) {
-          simCurrentTime = 0;
-          stopTrack();
-          if (progressFill) progressFill.style.width = '0%';
-          if (currentTimeEl) currentTimeEl.textContent = '0:00';
-          currentPlayingItem = null;
-          return;
+    // Show duration as soon as metadata is available
+    if (audio) {
+      audio.addEventListener('loadedmetadata', () => {
+        if (durationEl && !isNaN(audio.duration)) {
+          durationEl.textContent = formatTime(audio.duration);
         }
-        const pct = (simCurrentTime / simDuration) * 100;
+      });
+
+      audio.addEventListener('timeupdate', () => {
+        if (!audio.duration) return;
+        const pct = (audio.currentTime / audio.duration) * 100;
         if (progressFill) progressFill.style.width = `${pct}%`;
-        if (currentTimeEl) currentTimeEl.textContent = formatTime(simCurrentTime);
-      }, 1000);
-    };
+        if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
+        if (durationEl) durationEl.textContent = formatTime(audio.duration);
+      });
+
+      audio.addEventListener('ended', () => {
+        updatePlayState(false);
+        if (progressFill) progressFill.style.width = '0%';
+        if (currentTimeEl) currentTimeEl.textContent = '0:00';
+        currentPlayingItem = null;
+      });
+
+      audio.addEventListener('play', () => updatePlayState(true));
+      audio.addEventListener('pause', () => updatePlayState(false));
+    }
 
     const togglePlay = () => {
       const isCurrentlyPlaying = item.classList.contains('is-playing');
 
-      // Pause other playing tracks
+      // Stop any other playing track
       if (currentPlayingItem && currentPlayingItem !== item) {
         const otherStop = currentPlayingItem._stopTrack;
         if (otherStop) otherStop();
@@ -209,23 +206,12 @@
         currentPlayingItem = null;
       } else {
         currentPlayingItem = item;
-        item._stopTrack = stopTrack;
-
-        if (audio && audio.src) {
-          audio.play().then(() => {
-            updatePlayState(true);
-          }).catch(() => {
-            updatePlayState(true);
-          });
-        } else {
-          // Visual simulation while awaiting MP3
-          updatePlayState(true);
-          startSim();
+        if (audio) {
+          audio.play().catch(() => {});
         }
       }
     };
 
-    // Attach click to play button and vinyl
     playBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       togglePlay();
@@ -235,51 +221,14 @@
       togglePlay();
     });
 
-    // Audio metadata & progress updates for real MP3
-    if (audio) {
-      audio.addEventListener('loadedmetadata', () => {
-        if (durationEl && !isNaN(audio.duration)) {
-          durationEl.textContent = formatTime(audio.duration);
-        }
-      });
-
-      audio.addEventListener('timeupdate', () => {
-        if (audio.duration) {
-          const pct = (audio.currentTime / audio.duration) * 100;
-          if (progressFill) progressFill.style.width = `${pct}%`;
-          if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
-          if (durationEl) durationEl.textContent = formatTime(audio.duration);
-        }
-      });
-
-      audio.addEventListener('ended', () => {
-        stopTrack();
-        if (progressFill) progressFill.style.width = '0%';
-        if (currentTimeEl) currentTimeEl.textContent = '0:00';
-        currentPlayingItem = null;
-      });
-    }
-
     // Click on progress bar to seek
     progressBar?.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!audio || !audio.duration) return;
       const rect = progressBar.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const width = rect.width;
-      const ratio = Math.max(0, Math.min(1, clickX / width));
-
-      if (audio && audio.src && audio.duration) {
-        audio.currentTime = ratio * audio.duration;
-      } else {
-        simCurrentTime = Math.floor(ratio * simDuration);
-        if (currentTimeEl) currentTimeEl.textContent = formatTime(simCurrentTime);
-        if (durationEl && durationEl.textContent === '0:00') {
-          durationEl.textContent = formatTime(simDuration);
-        }
-      }
-      if (progressFill) {
-        progressFill.style.width = `${ratio * 100}%`;
-      }
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      audio.currentTime = ratio * audio.duration;
+      if (progressFill) progressFill.style.width = `${ratio * 100}%`;
     });
   });
 
