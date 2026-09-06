@@ -142,8 +142,6 @@
 
   trackItems.forEach((item) => {
     const playBtn = item.querySelector('.track-play-btn');
-    const playIcon = item.querySelector('.icon-play');
-    const pauseIcon = item.querySelector('.icon-pause');
     const audio = item.querySelector('.track-audio');
     const progressBar = item.querySelector('.track-progress-bar');
     const progressFill = item.querySelector('.track-progress-fill');
@@ -151,25 +149,50 @@
     const durationEl = item.querySelector('.track-time-duration');
     const vinylWrap = item.querySelector('.giradischi-vinyl-wrap');
 
+    let simInterval = null;
+    let simCurrentTime = 0;
+    const simDuration = 160; // 2m 40s preview duration
+
     const updatePlayState = (isPlaying) => {
       if (isPlaying) {
         item.classList.add('is-playing');
-        if (playIcon) playIcon.style.display = 'none';
-        if (pauseIcon) pauseIcon.style.display = 'block';
         if (playBtn) playBtn.setAttribute('title', 'Pausa');
       } else {
         item.classList.remove('is-playing');
-        if (playIcon) playIcon.style.display = 'block';
-        if (pauseIcon) pauseIcon.style.display = 'none';
         if (playBtn) playBtn.setAttribute('title', 'Play');
       }
     };
 
     const stopTrack = () => {
-      if (audio) {
+      if (audio && audio.src) {
         audio.pause();
       }
+      if (simInterval) {
+        clearInterval(simInterval);
+        simInterval = null;
+      }
       updatePlayState(false);
+    };
+
+    const startSim = () => {
+      if (durationEl && durationEl.textContent === '0:00') {
+        durationEl.textContent = formatTime(simDuration);
+      }
+      if (simInterval) clearInterval(simInterval);
+      simInterval = setInterval(() => {
+        simCurrentTime += 1;
+        if (simCurrentTime > simDuration) {
+          simCurrentTime = 0;
+          stopTrack();
+          if (progressFill) progressFill.style.width = '0%';
+          if (currentTimeEl) currentTimeEl.textContent = '0:00';
+          currentPlayingItem = null;
+          return;
+        }
+        const pct = (simCurrentTime / simDuration) * 100;
+        if (progressFill) progressFill.style.width = `${pct}%`;
+        if (currentTimeEl) currentTimeEl.textContent = formatTime(simCurrentTime);
+      }, 1000);
     };
 
     const togglePlay = () => {
@@ -195,8 +218,9 @@
             updatePlayState(true);
           });
         } else {
-          // Ready for MP3 connection
+          // Visual simulation while awaiting MP3
           updatePlayState(true);
+          startSim();
         }
       }
     };
@@ -211,7 +235,7 @@
       togglePlay();
     });
 
-    // Audio metadata & progress updates
+    // Audio metadata & progress updates for real MP3
     if (audio) {
       audio.addEventListener('loadedmetadata', () => {
         if (durationEl && !isNaN(audio.duration)) {
@@ -244,8 +268,14 @@
       const width = rect.width;
       const ratio = Math.max(0, Math.min(1, clickX / width));
 
-      if (audio && audio.duration) {
+      if (audio && audio.src && audio.duration) {
         audio.currentTime = ratio * audio.duration;
+      } else {
+        simCurrentTime = Math.floor(ratio * simDuration);
+        if (currentTimeEl) currentTimeEl.textContent = formatTime(simCurrentTime);
+        if (durationEl && durationEl.textContent === '0:00') {
+          durationEl.textContent = formatTime(simDuration);
+        }
       }
       if (progressFill) {
         progressFill.style.width = `${ratio * 100}%`;
