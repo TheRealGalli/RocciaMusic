@@ -138,14 +138,6 @@ a{color:inherit}
 .giradischi-item.is-playing .giradischi-img {
   filter: drop-shadow(0 0 22px rgba(230, 0, 30, 1)) drop-shadow(0 0 45px rgba(200, 0, 0, 0.8)) drop-shadow(0 0 80px rgba(160, 0, 0, 0.5));
 }
-.giradischi-item.is-playing .giradischi-img {
-  animation: vinylSpin 3s linear infinite;
-  transform-origin: center center;
-}
-@keyframes vinylSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 
 /* Track Title */
 .track-title {
