@@ -1,9 +1,8 @@
-// RocciaMusic Main JS - Hero video loop, intro animation & SoundCloud lazy load
+// RocciaMusic Main JS - Hero video loop, intro animation & interactive audio players
 (function(){
   const root = document.documentElement;
   const heroVideo = document.getElementById('hero-video');
   const heroCanvas = document.getElementById('hero-canvas');
-  const frames = Array.from(document.querySelectorAll('iframe.sc-frame'));
   const intro = document.getElementById('intro');
   const slash = intro ? intro.querySelector('.slash') : null;
 
@@ -130,59 +129,128 @@
     }
   }
 
-  // --- COOKIE CONSENT LOGIC ---
-  const cookieBanner = document.getElementById('cookie-banner');
-  const btnAccept = document.getElementById('cookie-accept');
-  const btnDecline = document.getElementById('cookie-decline');
-  const btnReset = document.getElementById('reset-cookies');
-
-  const getConsent = () => localStorage.getItem('cookie-consent');
-  const setConsent = (val) => {
-    localStorage.setItem('cookie-consent', val);
-    if (val === 'accepted') loadAllIframes();
-    cookieBanner?.classList.remove('is-visible');
+  // --- TRACK AUDIO PLAYERS ---
+  const formatTime = (seconds) => {
+    if (isNaN(seconds) || seconds < 0) return '0:00';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const loadAllIframes = () => {
-    frames.forEach(f => {
-      const src = f.getAttribute('data-src');
-      if (src && !f.getAttribute('src')) {
-        f.setAttribute('src', src);
+  const trackItems = Array.from(document.querySelectorAll('.giradischi-item'));
+  let currentPlayingItem = null;
+
+  trackItems.forEach((item) => {
+    const playBtn = item.querySelector('.track-play-btn');
+    const playIcon = item.querySelector('.icon-play');
+    const pauseIcon = item.querySelector('.icon-pause');
+    const audio = item.querySelector('.track-audio');
+    const progressBar = item.querySelector('.track-progress-bar');
+    const progressFill = item.querySelector('.track-progress-fill');
+    const currentTimeEl = item.querySelector('.track-time-current');
+    const durationEl = item.querySelector('.track-time-duration');
+    const vinylWrap = item.querySelector('.giradischi-vinyl-wrap');
+
+    const updatePlayState = (isPlaying) => {
+      if (isPlaying) {
+        item.classList.add('is-playing');
+        if (playIcon) playIcon.style.display = 'none';
+        if (pauseIcon) pauseIcon.style.display = 'block';
+        if (playBtn) playBtn.setAttribute('title', 'Pausa');
+      } else {
+        item.classList.remove('is-playing');
+        if (playIcon) playIcon.style.display = 'block';
+        if (pauseIcon) pauseIcon.style.display = 'none';
+        if (playBtn) playBtn.setAttribute('title', 'Play');
       }
-    });
-  };
+    };
 
-  // Intersection Observer to lazy load SoundCloud embeds on scroll after consent
-  if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver((entries, obs) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          const el = entry.target;
-          if (getConsent() === 'accepted') {
-            const src = el.getAttribute('data-src');
-            if (src && !el.getAttribute('src')) {
-              el.setAttribute('src', src);
-            }
-          }
-          obs.unobserve(el);
+    const stopTrack = () => {
+      if (audio) {
+        audio.pause();
+      }
+      updatePlayState(false);
+    };
+
+    const togglePlay = () => {
+      const isCurrentlyPlaying = item.classList.contains('is-playing');
+
+      // Pause other playing tracks
+      if (currentPlayingItem && currentPlayingItem !== item) {
+        const otherStop = currentPlayingItem._stopTrack;
+        if (otherStop) otherStop();
+      }
+
+      if (isCurrentlyPlaying) {
+        stopTrack();
+        currentPlayingItem = null;
+      } else {
+        currentPlayingItem = item;
+        item._stopTrack = stopTrack;
+
+        if (audio && audio.src) {
+          audio.play().then(() => {
+            updatePlayState(true);
+          }).catch(() => {
+            updatePlayState(true);
+          });
+        } else {
+          // Ready for MP3 connection
+          updatePlayState(true);
         }
       }
-    }, { rootMargin: '200px 0px' });
-    frames.forEach(f => io.observe(f));
-  } else if (getConsent() === 'accepted') {
-    loadAllIframes();
-  }
+    };
 
-  // Show consent banner if consent is missing
-  if (!getConsent() && cookieBanner) {
-    setTimeout(() => cookieBanner.classList.add('is-visible'), 1000);
-  }
+    // Attach click to play button and vinyl
+    playBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePlay();
+    });
 
-  btnAccept?.addEventListener('click', () => setConsent('accepted'));
-  btnDecline?.addEventListener('click', () => setConsent('declined'));
-  btnReset?.addEventListener('click', () => {
-    localStorage.removeItem('cookie-consent');
-    window.location.reload();
+    vinylWrap?.addEventListener('click', () => {
+      togglePlay();
+    });
+
+    // Audio metadata & progress updates
+    if (audio) {
+      audio.addEventListener('loadedmetadata', () => {
+        if (durationEl && !isNaN(audio.duration)) {
+          durationEl.textContent = formatTime(audio.duration);
+        }
+      });
+
+      audio.addEventListener('timeupdate', () => {
+        if (audio.duration) {
+          const pct = (audio.currentTime / audio.duration) * 100;
+          if (progressFill) progressFill.style.width = `${pct}%`;
+          if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
+          if (durationEl) durationEl.textContent = formatTime(audio.duration);
+        }
+      });
+
+      audio.addEventListener('ended', () => {
+        stopTrack();
+        if (progressFill) progressFill.style.width = '0%';
+        if (currentTimeEl) currentTimeEl.textContent = '0:00';
+        currentPlayingItem = null;
+      });
+    }
+
+    // Click on progress bar to seek
+    progressBar?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rect = progressBar.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+      const ratio = Math.max(0, Math.min(1, clickX / width));
+
+      if (audio && audio.duration) {
+        audio.currentTime = ratio * audio.duration;
+      }
+      if (progressFill) {
+        progressFill.style.width = `${ratio * 100}%`;
+      }
+    });
   });
 
   // Respect reduced motion settings
