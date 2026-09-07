@@ -176,14 +176,44 @@
     navigator.mediaSession.setActionHandler('seekto', (d) => {
       if (d.seekTime != null) audio.currentTime = d.seekTime;
     });
+    try { navigator.mediaSession.setActionHandler('nexttrack',     () => playNext()); } catch(_) {}
+    try { navigator.mediaSession.setActionHandler('previoustrack', () => playPrev()); } catch(_) {}
   };
 
   const clearMediaSession = () => {
     if (!('mediaSession' in navigator)) return;
     navigator.mediaSession.playbackState = 'none';
-    ['play','pause','stop','seekbackward','seekforward','seekto'].forEach(a => {
+    ['play','pause','stop','seekbackward','seekforward','seekto','nexttrack','previoustrack'].forEach(a => {
       try { navigator.mediaSession.setActionHandler(a, null); } catch(_) {}
     });
+  };
+
+  // --- CYCLE PLAYBACK ---
+  const playTrackItem = (item) => {
+    if (!item) return;
+    // Stop current
+    if (currentPlayingItem && currentPlayingItem !== item) {
+      const otherStop = currentPlayingItem._stopTrack;
+      if (otherStop) otherStop();
+    }
+    const audio = item.querySelector('.track-audio');
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    }
+    currentPlayingItem = item;
+  };
+
+  const playNext = () => {
+    const idx = trackItems.indexOf(currentPlayingItem);
+    const nextItem = trackItems[(idx + 1) % trackItems.length];
+    playTrackItem(nextItem);
+  };
+
+  const playPrev = () => {
+    const idx = trackItems.indexOf(currentPlayingItem);
+    const prevItem = trackItems[(idx - 1 + trackItems.length) % trackItems.length];
+    playTrackItem(prevItem);
   };
 
   trackItems.forEach((item) => {
@@ -242,8 +272,8 @@
         updatePlayState(false);
         if (progressFill) progressFill.style.width = '0%';
         if (currentTimeEl) currentTimeEl.textContent = '0:00';
-        currentPlayingItem = null;
-        clearMediaSession();
+        // Auto-play next track (cycle)
+        playNext();
       });
 
       audio.addEventListener('play', () => {
