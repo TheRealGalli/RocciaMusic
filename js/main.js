@@ -140,6 +140,52 @@
   const trackItems = Array.from(document.querySelectorAll('.giradischi-item'));
   let currentPlayingItem = null;
 
+  // --- MEDIA SESSION API (lock screen controls on iOS/Android) ---
+  const artworkMap = {
+    'helldiver':       'giradischi/IMG_6861_transparent.webp',
+    'deus-ex-machina': 'giradischi/IMG_6866_transparent.webp',
+    'dimora-ade':      'giradischi/IMG_6863_transparent.webp',
+    'niente':          'giradischi/IMG_6864_transparent.webp',
+    'regno-del-rap':   'giradischi/IMG_6865_transparent.webp',
+    'ironmonkey':      'giradischi/IMG_6871_transparent.webp',
+  };
+
+  const setMediaSession = (audio, trackId, title) => {
+    if (!('mediaSession' in navigator)) return;
+    const base = window.location.origin +
+      window.location.pathname.replace(/\/[^\/]*$/, '/');
+    const art = artworkMap[trackId];
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title,
+      artist: 'RocciaMusic',
+      album:  'Roccia',
+      artwork: art ? [{ src: base + art, sizes: '512x512', type: 'image/webp' }] : []
+    });
+    navigator.mediaSession.playbackState = 'playing';
+
+    // Lock-screen transport controls
+    navigator.mediaSession.setActionHandler('play',  () => audio.play().catch(() => {}));
+    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+    navigator.mediaSession.setActionHandler('stop',  () => { audio.pause(); audio.currentTime = 0; });
+    navigator.mediaSession.setActionHandler('seekbackward', (d) => {
+      audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10));
+    });
+    navigator.mediaSession.setActionHandler('seekforward', (d) => {
+      audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + (d.seekOffset || 10));
+    });
+    navigator.mediaSession.setActionHandler('seekto', (d) => {
+      if (d.seekTime != null) audio.currentTime = d.seekTime;
+    });
+  };
+
+  const clearMediaSession = () => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = 'none';
+    ['play','pause','stop','seekbackward','seekforward','seekto'].forEach(a => {
+      try { navigator.mediaSession.setActionHandler(a, null); } catch(_) {}
+    });
+  };
+
   trackItems.forEach((item) => {
     const playBtn = item.querySelector('.track-play-btn');
     const audio = item.querySelector('.track-audio');
@@ -167,9 +213,20 @@
 
     // Show duration as soon as metadata is available
     if (audio) {
+      const trackId = item.dataset.trackId || '';
+      const trackTitle = item.querySelector('.track-title')?.textContent.trim() || '';
+
       audio.addEventListener('loadedmetadata', () => {
         if (durationEl && !isNaN(audio.duration)) {
           durationEl.textContent = formatTime(audio.duration);
+        }
+        // Update position state for lock screen scrubber
+        if ('mediaSession' in navigator && !audio.paused) {
+          navigator.mediaSession.setPositionState({
+            duration: audio.duration,
+            playbackRate: audio.playbackRate,
+            position: audio.currentTime
+          });
         }
       });
 
@@ -186,10 +243,30 @@
         if (progressFill) progressFill.style.width = '0%';
         if (currentTimeEl) currentTimeEl.textContent = '0:00';
         currentPlayingItem = null;
+        clearMediaSession();
       });
 
-      audio.addEventListener('play', () => updatePlayState(true));
-      audio.addEventListener('pause', () => updatePlayState(false));
+      audio.addEventListener('play', () => {
+        updatePlayState(true);
+        setMediaSession(audio, trackId, trackTitle);
+        // Keep lock screen scrubber in sync
+        if ('mediaSession' in navigator && audio.duration) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: audio.duration,
+              playbackRate: audio.playbackRate,
+              position: audio.currentTime
+            });
+          } catch(_) {}
+        }
+      });
+
+      audio.addEventListener('pause', () => {
+        updatePlayState(false);
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'paused';
+        }
+      });
     }
 
     const togglePlay = () => {
