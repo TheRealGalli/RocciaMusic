@@ -140,55 +140,58 @@
   const trackItems = Array.from(document.querySelectorAll('.giradischi-item'));
   let currentPlayingItem = null;
 
-  // --- MEDIA SESSION API (lock screen controls on iOS/Android) ---
-  const artworkMap = {
-    'doom-ego':        'giradischi/IMG_6930_transparent.webp',
-    'player-cuore':    'giradischi/IMG_6927_transparent.webp',
-    'samurai-anima':   'giradischi/IMG_6926_transparent.webp',
-    'helldiver':       'giradischi/IMG_6861_transparent.webp',
-    'deus-ex-machina': 'giradischi/IMG_6866_transparent.webp',
-    'dimora-ade':      'giradischi/IMG_6863_transparent.webp',
-    'niente':          'giradischi/IMG_6864_transparent.webp',
-    'regno-del-rap':   'giradischi/IMG_6865_transparent.webp',
-    'ironmonkey':      'giradischi/IMG_6871_transparent.webp',
-  };
-
+  // --- MEDIA SESSION API (lock screen / notification controls on iOS & Android) ---
   const setMediaSession = (audio, trackId, title) => {
     if (!('mediaSession' in navigator)) return;
-    const base = window.location.origin +
-      window.location.pathname.replace(/\/[^\/]*$/, '/');
-    const art = artworkMap[trackId];
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title,
-      artist: 'RocciaMusic',
-      album:  'Roccia',
-      artwork: art ? [{ src: base + art, sizes: '512x512', type: 'image/webp' }] : []
-    });
-    navigator.mediaSession.playbackState = 'playing';
+    try {
+      const base = window.location.origin +
+        window.location.pathname.replace(/\/[^\/]*$/, '/');
+      
+      const sizes = ['96x96', '128x128', '192x192', '256x256', '384x384', '512x512'];
+      const artwork = [];
+      sizes.forEach((s) => {
+        artwork.push({ src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: s, type: 'image/jpeg' });
+        artwork.push({ src: `${base}giradischi/artwork/${trackId}.png`, sizes: s, type: 'image/png' });
+      });
 
-    // Lock-screen transport controls
-    navigator.mediaSession.setActionHandler('play',  () => audio.play().catch(() => {}));
-    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
-    navigator.mediaSession.setActionHandler('stop',  () => { audio.pause(); audio.currentTime = 0; });
-    navigator.mediaSession.setActionHandler('seekbackward', (d) => {
-      audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10));
-    });
-    navigator.mediaSession.setActionHandler('seekforward', (d) => {
-      audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + (d.seekOffset || 10));
-    });
-    navigator.mediaSession.setActionHandler('seekto', (d) => {
-      if (d.seekTime != null) audio.currentTime = d.seekTime;
-    });
-    try { navigator.mediaSession.setActionHandler('nexttrack',     () => playNext()); } catch(_) {}
-    try { navigator.mediaSession.setActionHandler('previoustrack', () => playPrev()); } catch(_) {}
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: title || 'RocciaMusic',
+        artist: 'RocciaMusic',
+        album: 'Roccia',
+        artwork: artwork
+      });
+      navigator.mediaSession.playbackState = 'playing';
+
+      // Lock-screen transport controls (iOS Control Center & Android Notification Bar)
+      const actionHandlers = [
+        ['play', () => audio.play().catch(() => {})],
+        ['pause', () => audio.pause()],
+        ['stop', () => { audio.pause(); audio.currentTime = 0; }],
+        ['seekbackward', (d) => { audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10)); }],
+        ['seekforward', (d) => { audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + (d.seekOffset || 10)); }],
+        ['seekto', (d) => { if (d.seekTime != null) audio.currentTime = d.seekTime; }],
+        ['nexttrack', () => playNext()],
+        ['previoustrack', () => playPrev()]
+      ];
+
+      actionHandlers.forEach(([action, handler]) => {
+        try {
+          navigator.mediaSession.setActionHandler(action, handler);
+        } catch (_) {}
+      });
+    } catch (err) {
+      console.warn('MediaSession initialization error:', err);
+    }
   };
 
   const clearMediaSession = () => {
     if (!('mediaSession' in navigator)) return;
-    navigator.mediaSession.playbackState = 'none';
-    ['play','pause','stop','seekbackward','seekforward','seekto','nexttrack','previoustrack'].forEach(a => {
-      try { navigator.mediaSession.setActionHandler(a, null); } catch(_) {}
-    });
+    try {
+      navigator.mediaSession.playbackState = 'none';
+      ['play','pause','stop','seekbackward','seekforward','seekto','nexttrack','previoustrack'].forEach(a => {
+        try { navigator.mediaSession.setActionHandler(a, null); } catch(_) {}
+      });
+    } catch (_) {}
   };
 
   // --- CYCLE PLAYBACK ---

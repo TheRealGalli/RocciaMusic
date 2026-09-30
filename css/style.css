@@ -134,7 +134,6 @@ a{color:inherit}
   transition: filter 0.35s ease, transform 0.35s ease;
   display: block;
 }
-.giradischi-item:hover .giradischi-img,
 .giradischi-item.is-playing .giradischi-img {
   filter: drop-shadow(0 0 22px rgba(230, 0, 30, 1)) drop-shadow(0 0 45px rgba(200, 0, 0, 0.8)) drop-shadow(0 0 80px rgba(160, 0, 0, 0.5));
 }
@@ -156,7 +155,6 @@ a{color:inherit}
   align-items: flex-end;
   justify-content: center;
 }
-.giradischi-item:hover .track-title,
 .giradischi-item.is-playing .track-title {
   color: #ffffff;
   text-shadow: 0 0 12px rgba(230, 0, 30, 0.7);
@@ -178,7 +176,6 @@ a{color:inherit}
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
-.giradischi-item:hover .track-player,
 .giradischi-item.is-playing .track-player {
   border-color: rgba(230, 0, 30, 0.4);
   box-shadow: 0 6px 24px rgba(230, 0, 30, 0.25);
