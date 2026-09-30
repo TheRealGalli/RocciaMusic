@@ -142,9 +142,9 @@
 
   // --- MEDIA SESSION API (lock screen controls on iOS/Android) ---
   const artworkMap = {
-    'doom-ego':        'giradischi/IMG_6926_transparent.webp',
+    'doom-ego':        'giradischi/IMG_6930_transparent.webp',
     'player-cuore':    'giradischi/IMG_6927_transparent.webp',
-    'samurai-anima':   'giradischi/IMG_6930_transparent.webp',
+    'samurai-anima':   'giradischi/IMG_6926_transparent.webp',
     'helldiver':       'giradischi/IMG_6861_transparent.webp',
     'deus-ex-machina': 'giradischi/IMG_6866_transparent.webp',
     'dimora-ade':      'giradischi/IMG_6863_transparent.webp',
