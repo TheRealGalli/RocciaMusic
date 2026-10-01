@@ -137,6 +137,29 @@
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  // --- SCREEN WAKE LOCK (keep screen on during audio playback) ---
+  let wakeLock = null;
+  const acquireWakeLock = async () => {
+    if ('wakeLock' in navigator && wakeLock === null) {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      } catch (_) {}
+    }
+  };
+  const releaseWakeLock = () => {
+    if (wakeLock !== null) {
+      wakeLock.release().catch(() => {});
+      wakeLock = null;
+    }
+  };
+  // Re-acquire after visibility is restored (iOS releases it on hide)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentPlayingItem) {
+      acquireWakeLock();
+    }
+  });
+
   const trackItems = Array.from(document.querySelectorAll('.giradischi-item'));
   let currentPlayingItem = null;
 
@@ -311,10 +334,9 @@
       audio.addEventListener('play', () => {
         userIntentPaused = false;
         audio.preload = 'auto';
-        if (heroVideo && !heroVideo.paused) {
-          heroVideo.pause();
-        }
+        // Hero video keeps playing alongside audio — no pause here
         updatePlayState(true);
+        acquireWakeLock();
         setMediaSession(audio, trackId, trackTitle);
         // Keep lock screen scrubber in sync
         if ('mediaSession' in navigator && audio.duration) {
@@ -335,6 +357,7 @@
           return;
         }
         updatePlayState(false);
+        releaseWakeLock();
         if ('mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'paused';
         }
@@ -427,19 +450,8 @@
   onScroll();
 
   // Page visibility / standby management for mobile background audio & video
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      // Pause hero video to release GPU/video decoder and prevent iOS audio session conflicts
-      if (heroVideo && !heroVideo.paused) {
-        heroVideo.pause();
-      }
-    } else {
-      // Resume hero video only if visible in viewport AND no audio track is playing
-      if (heroVideo && heroVideo.paused && isHeroVisible && !currentPlayingItem) {
-        heroVideo.play().catch(() => {});
-      }
-    }
-  });
+  // Note: hero video is intentionally kept running alongside audio.
+  // WakeLock re-acquisition on visibility restore is handled above.
 
   // Run intro immediately
   runIntro();
