@@ -47,7 +47,7 @@
       const heroObserver = new IntersectionObserver((entries) => {
         for (const entry of entries) {
           isHeroVisible = entry.isIntersecting;
-          if (isHeroVisible && heroVideo.paused && !currentPlayingItem) {
+          if (isHeroVisible && heroVideo.paused && !document.hidden) {
             heroVideo.play().catch(() => {});
           }
         }
@@ -137,7 +137,7 @@
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // --- SCREEN WAKE LOCK (keep screen on during audio playback) ---
+  // --- SCREEN WAKE LOCK (keep screen on during audio playback when page is visible) ---
   let wakeLock = null;
   const acquireWakeLock = async () => {
     if ('wakeLock' in navigator && wakeLock === null) {
@@ -153,15 +153,23 @@
       wakeLock = null;
     }
   };
-  // Re-acquire after visibility is restored (iOS releases it on hide)
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && currentPlayingItem) {
-      acquireWakeLock();
-    }
-  });
 
   const trackItems = Array.from(document.querySelectorAll('.giradischi-item'));
   let currentPlayingItem = null;
+
+  // Sync position state with iOS Control Center / Android Media Notification
+  const syncPositionState = (audio) => {
+    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+    if (!audio || !audio.duration || isNaN(audio.duration) || audio.duration <= 0) return;
+    try {
+      const pos = Math.min(Math.max(0, audio.currentTime || 0), audio.duration);
+      navigator.mediaSession.setPositionState({
+        duration: audio.duration,
+        playbackRate: audio.playbackRate || 1,
+        position: pos
+      });
+    } catch (_) {}
+  };
 
   // --- MEDIA SESSION API (lock screen / notification controls on iOS & Android) ---
   const setMediaSession = (audio, trackId, title) => {
@@ -189,29 +197,53 @@
       const actionHandlers = [
         ['play', () => {
           if (currentPlayingItem) {
-            const currentAudio = currentPlayingItem.querySelector('.track-audio');
-            if (currentAudio) currentAudio.play().catch(() => {});
-          } else {
-            audio.play().catch(() => {});
+            const a = currentPlayingItem.querySelector('.track-audio');
+            if (a) a.play().catch(() => {});
           }
         }],
         ['pause', () => {
-          if (currentPlayingItem && currentPlayingItem._stopTrack) {
-            currentPlayingItem._stopTrack();
-          } else {
-            audio.pause();
+          if (currentPlayingItem) {
+            const a = currentPlayingItem.querySelector('.track-audio');
+            if (a) a.pause();
           }
         }],
         ['stop', () => {
-          if (currentPlayingItem && currentPlayingItem._stopTrack) {
-            currentPlayingItem._stopTrack();
+          if (currentPlayingItem) {
+            const a = currentPlayingItem.querySelector('.track-audio');
+            if (a) {
+              a.pause();
+              a.currentTime = 0;
+            }
+            if (currentPlayingItem._stopTrack) currentPlayingItem._stopTrack();
           }
-          audio.pause();
-          audio.currentTime = 0;
         }],
-        ['seekbackward', (d) => { audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10)); }],
-        ['seekforward', (d) => { audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + (d.seekOffset || 10)); }],
-        ['seekto', (d) => { if (d.seekTime != null) audio.currentTime = d.seekTime; }],
+        ['seekbackward', (d) => {
+          if (currentPlayingItem) {
+            const a = currentPlayingItem.querySelector('.track-audio');
+            if (a) {
+              a.currentTime = Math.max(0, a.currentTime - (d.seekOffset || 10));
+              syncPositionState(a);
+            }
+          }
+        }],
+        ['seekforward', (d) => {
+          if (currentPlayingItem) {
+            const a = currentPlayingItem.querySelector('.track-audio');
+            if (a) {
+              a.currentTime = Math.min(a.duration || 0, a.currentTime + (d.seekOffset || 10));
+              syncPositionState(a);
+            }
+          }
+        }],
+        ['seekto', (d) => {
+          if (currentPlayingItem && d.seekTime != null) {
+            const a = currentPlayingItem.querySelector('.track-audio');
+            if (a) {
+              a.currentTime = d.seekTime;
+              syncPositionState(a);
+            }
+          }
+        }],
         ['nexttrack', () => playNext()],
         ['previoustrack', () => playPrev()]
       ];
@@ -239,18 +271,33 @@
   // --- CYCLE PLAYBACK ---
   const playTrackItem = (item) => {
     if (!item) return;
-    // Stop current
+    // Stop previous track if different
     if (currentPlayingItem && currentPlayingItem !== item) {
-      const otherStop = currentPlayingItem._stopTrack;
-      if (otherStop) otherStop();
-    }
-    const audio = item.querySelector('.track-audio');
-    if (audio) {
-      audio.preload = 'auto';
-      audio.currentTime = 0;
-      audio.play().catch(() => {});
+      const prevItem = currentPlayingItem;
+      const prevAudio = prevItem.querySelector('.track-audio');
+      if (prevAudio) {
+        prevAudio.pause();
+        prevAudio.currentTime = 0;
+      }
+      prevItem.classList.remove('is-playing');
+      const prevBtn = prevItem.querySelector('.track-play-btn');
+      if (prevBtn) prevBtn.setAttribute('title', 'Play');
+      const prevFill = prevItem.querySelector('.track-progress-fill');
+      if (prevFill) prevFill.style.width = '0%';
+      const prevCurrentTime = prevItem.querySelector('.track-time-current');
+      if (prevCurrentTime) prevCurrentTime.textContent = '0:00';
     }
     currentPlayingItem = item;
+    const audio = item.querySelector('.track-audio');
+    if (audio) {
+      audio.currentTime = 0;
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Playback error:', err);
+        });
+      }
+    }
   };
 
   const playNext = () => {
@@ -284,35 +331,23 @@
       }
     };
 
-    let userIntentPaused = false;
-    let endedFired = false; // track whether 'ended' event already advanced to next track
-
     const stopTrack = () => {
-      userIntentPaused = true;
       if (audio) audio.pause();
       updatePlayState(false);
-      if (heroVideo && heroVideo.paused && isHeroVisible) {
-        heroVideo.play().catch(() => {});
-      }
     };
     item._stopTrack = stopTrack;
 
-    // Show duration as soon as metadata is available
     if (audio) {
       const trackId = item.dataset.trackId || '';
       const trackTitle = item.querySelector('.track-title')?.textContent.trim() || '';
+      let lastSyncSec = -1;
 
       audio.addEventListener('loadedmetadata', () => {
         if (durationEl && !isNaN(audio.duration)) {
           durationEl.textContent = formatTime(audio.duration);
         }
-        // Update position state for lock screen scrubber
-        if ('mediaSession' in navigator && !audio.paused) {
-          navigator.mediaSession.setPositionState({
-            duration: audio.duration,
-            playbackRate: audio.playbackRate,
-            position: audio.currentTime
-          });
+        if (currentPlayingItem === item) {
+          syncPositionState(audio);
         }
       });
 
@@ -322,63 +357,47 @@
         if (progressFill) progressFill.style.width = `${pct}%`;
         if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
         if (durationEl) durationEl.textContent = formatTime(audio.duration);
+
+        // Keep lockscreen scrubber perfectly synchronized every second
+        const sec = Math.floor(audio.currentTime);
+        if (sec !== lastSyncSec) {
+          lastSyncSec = sec;
+          if (currentPlayingItem === item) {
+            syncPositionState(audio);
+          }
+        }
       });
 
       audio.addEventListener('ended', () => {
-        // Standard browsers: 'ended' fires reliably → advance track.
-        // Set flag so the 'pause' fired right after doesn't advance again.
-        endedFired = true;
-        userIntentPaused = true;
         updatePlayState(false);
         if (progressFill) progressFill.style.width = '0%';
         if (currentTimeEl) currentTimeEl.textContent = '0:00';
+        // Auto-play next track (cycle) seamlessly
         playNext();
       });
 
       audio.addEventListener('play', () => {
-        endedFired = false; // reset for new playback cycle
-        userIntentPaused = false;
-        audio.preload = 'auto';
-        // Hero video keeps playing alongside audio — no pause here
         updatePlayState(true);
         acquireWakeLock();
         setMediaSession(audio, trackId, trackTitle);
-        // Keep lock screen scrubber in sync
-        if ('mediaSession' in navigator && audio.duration) {
-          try {
-            navigator.mediaSession.setPositionState({
-              duration: audio.duration,
-              playbackRate: audio.playbackRate,
-              position: audio.currentTime
-            });
-          } catch(_) {}
-        }
+        syncPositionState(audio);
       });
 
       audio.addEventListener('pause', () => {
-        if (audio.ended) {
-          // Track finished naturally.
-          updatePlayState(false);
-          if (!endedFired) {
-            // iOS background: 'ended' never fired, only 'pause' with ended=true.
-            // Advance to next track manually.
-            endedFired = true;
-            if (progressFill) progressFill.style.width = '0%';
-            if (currentTimeEl) currentTimeEl.textContent = '0:00';
-            playNext();
-          }
-          // else: 'ended' already advanced — nothing more to do.
-          return;
-        }
-        // If pause happened unexpectedly during standby/auto-sleep while active:
-        if (!userIntentPaused && currentPlayingItem === item) {
-          audio.play().catch(() => {});
-          return;
-        }
         updatePlayState(false);
-        releaseWakeLock();
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = 'paused';
+        // Only update lockscreen state if this track is still the active one and wasn't transitioning/ended
+        if (currentPlayingItem === item && !audio.ended) {
+          releaseWakeLock();
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'paused';
+          }
+          syncPositionState(audio);
+        }
+      });
+
+      audio.addEventListener('seeked', () => {
+        if (currentPlayingItem === item) {
+          syncPositionState(audio);
         }
       });
     }
@@ -386,20 +405,16 @@
     const togglePlay = () => {
       const isCurrentlyPlaying = item.classList.contains('is-playing');
 
-      // Stop any other playing track
-      if (currentPlayingItem && currentPlayingItem !== item) {
-        const otherStop = currentPlayingItem._stopTrack;
-        if (otherStop) otherStop();
-      }
-
       if (isCurrentlyPlaying) {
         stopTrack();
         currentPlayingItem = null;
       } else {
+        if (currentPlayingItem && currentPlayingItem !== item) {
+          const otherStop = currentPlayingItem._stopTrack;
+          if (otherStop) otherStop();
+        }
         currentPlayingItem = item;
-        userIntentPaused = false;
         if (audio) {
-          audio.preload = 'auto';
           audio.play().catch(() => {});
         }
       }
@@ -422,6 +437,8 @@
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       audio.currentTime = ratio * audio.duration;
       if (progressFill) progressFill.style.width = `${ratio * 100}%`;
+      if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
+      syncPositionState(audio);
     });
   });
 
@@ -468,9 +485,29 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  // Page visibility / standby management for mobile background audio & video
-  // Note: hero video is intentionally kept running alongside audio.
-  // WakeLock re-acquisition on visibility restore is handled above.
+  // Page visibility & standby management:
+  // When leaving page or entering lockscreen/standby, sync audio position to MediaSession and pause hero video to save GPU/RAM.
+  // When returning, resume hero video if visible and refresh sync.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (currentPlayingItem) {
+        const a = currentPlayingItem.querySelector('.track-audio');
+        if (a) syncPositionState(a);
+      }
+      if (heroVideo && !heroVideo.paused) {
+        heroVideo.pause();
+      }
+    } else {
+      if (heroVideo && heroVideo.paused && isHeroVisible) {
+        heroVideo.play().catch(() => {});
+      }
+      if (currentPlayingItem) {
+        acquireWakeLock();
+        const a = currentPlayingItem.querySelector('.track-audio');
+        if (a) syncPositionState(a);
+      }
+    }
+  });
 
   // Run intro immediately
   runIntro();
