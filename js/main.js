@@ -285,6 +285,7 @@
     };
 
     let userIntentPaused = false;
+    let endedFired = false; // track whether 'ended' event already advanced to next track
 
     const stopTrack = () => {
       userIntentPaused = true;
@@ -324,17 +325,18 @@
       });
 
       audio.addEventListener('ended', () => {
-        // Mark as intentional so the 'pause' event fired right after 'ended'
-        // doesn't mistakenly re-play this track instead of advancing to the next.
+        // Standard browsers: 'ended' fires reliably → advance track.
+        // Set flag so the 'pause' fired right after doesn't advance again.
+        endedFired = true;
         userIntentPaused = true;
         updatePlayState(false);
         if (progressFill) progressFill.style.width = '0%';
         if (currentTimeEl) currentTimeEl.textContent = '0:00';
-        // Auto-play next track (cycle)
         playNext();
       });
 
       audio.addEventListener('play', () => {
+        endedFired = false; // reset for new playback cycle
         userIntentPaused = false;
         audio.preload = 'auto';
         // Hero video keeps playing alongside audio — no pause here
@@ -354,9 +356,18 @@
       });
 
       audio.addEventListener('pause', () => {
-        // Never re-play a track that has naturally ended (would cause looping).
         if (audio.ended) {
+          // Track finished naturally.
           updatePlayState(false);
+          if (!endedFired) {
+            // iOS background: 'ended' never fired, only 'pause' with ended=true.
+            // Advance to next track manually.
+            endedFired = true;
+            if (progressFill) progressFill.style.width = '0%';
+            if (currentTimeEl) currentTimeEl.textContent = '0:00';
+            playNext();
+          }
+          // else: 'ended' already advanced — nothing more to do.
           return;
         }
         // If pause happened unexpectedly during standby/auto-sleep while active:
