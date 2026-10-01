@@ -324,6 +324,9 @@
       });
 
       audio.addEventListener('ended', () => {
+        // Mark as intentional so the 'pause' event fired right after 'ended'
+        // doesn't mistakenly re-play this track instead of advancing to the next.
+        userIntentPaused = true;
         updatePlayState(false);
         if (progressFill) progressFill.style.width = '0%';
         if (currentTimeEl) currentTimeEl.textContent = '0:00';
@@ -351,6 +354,11 @@
       });
 
       audio.addEventListener('pause', () => {
+        // Never re-play a track that has naturally ended (would cause looping).
+        if (audio.ended) {
+          updatePlayState(false);
+          return;
+        }
         // If pause happened unexpectedly during standby/auto-sleep while active:
         if (!userIntentPaused && currentPlayingItem === item) {
           audio.play().catch(() => {});
