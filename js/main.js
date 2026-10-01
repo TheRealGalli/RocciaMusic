@@ -140,6 +140,28 @@
   const trackItems = Array.from(document.querySelectorAll('.giradischi-item'));
   let currentPlayingItem = null;
 
+  // --- SCREEN WAKE LOCK API (prevents mobile screen from going into auto-sleep while listening) ---
+  let wakeLock = null;
+  const acquireWakeLock = async () => {
+    if ('wakeLock' in navigator && !wakeLock) {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          wakeLock = null;
+        });
+      } catch (_) {}
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    if (wakeLock) {
+      try {
+        await wakeLock.release();
+      } catch (_) {}
+      wakeLock = null;
+    }
+  };
+
   // --- MEDIA SESSION API (lock screen / notification controls on iOS & Android) ---
   const setMediaSession = (audio, trackId, title) => {
     if (!('mediaSession' in navigator)) return;
@@ -164,9 +186,18 @@
 
       // Lock-screen transport controls (iOS Control Center & Android Notification Bar)
       const actionHandlers = [
-        ['play', () => audio.play().catch(() => {})],
-        ['pause', () => audio.pause()],
-        ['stop', () => { audio.pause(); audio.currentTime = 0; }],
+        ['play', () => {
+          audio.play().then(() => acquireWakeLock()).catch(() => {});
+        }],
+        ['pause', () => {
+          audio.pause();
+          releaseWakeLock();
+        }],
+        ['stop', () => {
+          audio.pause();
+          audio.currentTime = 0;
+          releaseWakeLock();
+        }],
         ['seekbackward', (d) => { audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10)); }],
         ['seekforward', (d) => { audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + (d.seekOffset || 10)); }],
         ['seekto', (d) => { if (d.seekTime != null) audio.currentTime = d.seekTime; }],
@@ -204,8 +235,9 @@
     }
     const audio = item.querySelector('.track-audio');
     if (audio) {
+      audio.preload = 'auto';
       audio.currentTime = 0;
-      audio.play().catch(() => {});
+      audio.play().then(() => acquireWakeLock()).catch(() => {});
     }
     currentPlayingItem = item;
   };
@@ -241,9 +273,13 @@
       }
     };
 
+    let userIntentPaused = false;
+
     const stopTrack = () => {
+      userIntentPaused = true;
       if (audio) audio.pause();
       updatePlayState(false);
+      releaseWakeLock();
     };
     item._stopTrack = stopTrack;
 
@@ -283,6 +319,9 @@
       });
 
       audio.addEventListener('play', () => {
+        userIntentPaused = false;
+        audio.preload = 'auto';
+        acquireWakeLock();
         updatePlayState(true);
         setMediaSession(audio, trackId, trackTitle);
         // Keep lock screen scrubber in sync
@@ -298,9 +337,17 @@
       });
 
       audio.addEventListener('pause', () => {
+        // If pause happened unexpectedly during standby/auto-sleep while active:
+        if (!userIntentPaused && document.hidden && currentPlayingItem === item) {
+          audio.play().catch(() => {});
+          return;
+        }
         updatePlayState(false);
         if ('mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'paused';
+        }
+        if (currentPlayingItem === item) {
+          releaseWakeLock();
         }
       });
     }
@@ -319,8 +366,10 @@
         currentPlayingItem = null;
       } else {
         currentPlayingItem = item;
+        userIntentPaused = false;
         if (audio) {
-          audio.play().catch(() => {});
+          audio.preload = 'auto';
+          audio.play().then(() => acquireWakeLock()).catch(() => {});
         }
       }
     };
@@ -387,6 +436,25 @@
   };
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+
+  // Page visibility / standby management for mobile background audio & video
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      // Pause hero video to release GPU/video decoder and prevent iOS audio session conflicts
+      if (heroVideo && !heroVideo.paused) {
+        heroVideo.pause();
+      }
+    } else {
+      // Re-acquire wake lock if music is actively playing
+      if (currentPlayingItem) {
+        acquireWakeLock();
+      }
+      // Resume hero video if visible in viewport
+      if (heroVideo && heroVideo.paused && isHeroVisible) {
+        heroVideo.play().catch(() => {});
+      }
+    }
+  });
 
   // Run intro immediately
   runIntro();
