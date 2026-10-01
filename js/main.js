@@ -405,6 +405,17 @@
     const togglePlay = () => {
       const isCurrentlyPlaying = item.classList.contains('is-playing');
 
+      // Pre-warm audio elements on first user gesture so iOS Safari authorizes them in background
+      if (!window._audioElementsPrimed) {
+        window._audioElementsPrimed = true;
+        trackItems.forEach((it) => {
+          const a = it.querySelector('.track-audio');
+          if (a && a !== audio && a.paused) {
+            a.load();
+          }
+        });
+      }
+
       if (isCurrentlyPlaying) {
         stopTrack();
         currentPlayingItem = null;
