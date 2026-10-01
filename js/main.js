@@ -47,7 +47,7 @@
       const heroObserver = new IntersectionObserver((entries) => {
         for (const entry of entries) {
           isHeroVisible = entry.isIntersecting;
-          if (isHeroVisible && heroVideo.paused) {
+          if (isHeroVisible && heroVideo.paused && !currentPlayingItem) {
             heroVideo.play().catch(() => {});
           }
         }
@@ -140,28 +140,6 @@
   const trackItems = Array.from(document.querySelectorAll('.giradischi-item'));
   let currentPlayingItem = null;
 
-  // --- SCREEN WAKE LOCK API (prevents mobile screen from going into auto-sleep while listening) ---
-  let wakeLock = null;
-  const acquireWakeLock = async () => {
-    if ('wakeLock' in navigator && !wakeLock) {
-      try {
-        wakeLock = await navigator.wakeLock.request('screen');
-        wakeLock.addEventListener('release', () => {
-          wakeLock = null;
-        });
-      } catch (_) {}
-    }
-  };
-
-  const releaseWakeLock = async () => {
-    if (wakeLock) {
-      try {
-        await wakeLock.release();
-      } catch (_) {}
-      wakeLock = null;
-    }
-  };
-
   // --- MEDIA SESSION API (lock screen / notification controls on iOS & Android) ---
   const setMediaSession = (audio, trackId, title) => {
     if (!('mediaSession' in navigator)) return;
@@ -187,16 +165,26 @@
       // Lock-screen transport controls (iOS Control Center & Android Notification Bar)
       const actionHandlers = [
         ['play', () => {
-          audio.play().then(() => acquireWakeLock()).catch(() => {});
+          if (currentPlayingItem) {
+            const currentAudio = currentPlayingItem.querySelector('.track-audio');
+            if (currentAudio) currentAudio.play().catch(() => {});
+          } else {
+            audio.play().catch(() => {});
+          }
         }],
         ['pause', () => {
-          audio.pause();
-          releaseWakeLock();
+          if (currentPlayingItem && currentPlayingItem._stopTrack) {
+            currentPlayingItem._stopTrack();
+          } else {
+            audio.pause();
+          }
         }],
         ['stop', () => {
+          if (currentPlayingItem && currentPlayingItem._stopTrack) {
+            currentPlayingItem._stopTrack();
+          }
           audio.pause();
           audio.currentTime = 0;
-          releaseWakeLock();
         }],
         ['seekbackward', (d) => { audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10)); }],
         ['seekforward', (d) => { audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + (d.seekOffset || 10)); }],
@@ -237,7 +225,7 @@
     if (audio) {
       audio.preload = 'auto';
       audio.currentTime = 0;
-      audio.play().then(() => acquireWakeLock()).catch(() => {});
+      audio.play().catch(() => {});
     }
     currentPlayingItem = item;
   };
@@ -279,7 +267,9 @@
       userIntentPaused = true;
       if (audio) audio.pause();
       updatePlayState(false);
-      releaseWakeLock();
+      if (heroVideo && heroVideo.paused && isHeroVisible) {
+        heroVideo.play().catch(() => {});
+      }
     };
     item._stopTrack = stopTrack;
 
@@ -321,7 +311,9 @@
       audio.addEventListener('play', () => {
         userIntentPaused = false;
         audio.preload = 'auto';
-        acquireWakeLock();
+        if (heroVideo && !heroVideo.paused) {
+          heroVideo.pause();
+        }
         updatePlayState(true);
         setMediaSession(audio, trackId, trackTitle);
         // Keep lock screen scrubber in sync
@@ -338,16 +330,13 @@
 
       audio.addEventListener('pause', () => {
         // If pause happened unexpectedly during standby/auto-sleep while active:
-        if (!userIntentPaused && document.hidden && currentPlayingItem === item) {
+        if (!userIntentPaused && currentPlayingItem === item) {
           audio.play().catch(() => {});
           return;
         }
         updatePlayState(false);
         if ('mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'paused';
-        }
-        if (currentPlayingItem === item) {
-          releaseWakeLock();
         }
       });
     }
@@ -369,7 +358,7 @@
         userIntentPaused = false;
         if (audio) {
           audio.preload = 'auto';
-          audio.play().then(() => acquireWakeLock()).catch(() => {});
+          audio.play().catch(() => {});
         }
       }
     };
@@ -445,12 +434,8 @@
         heroVideo.pause();
       }
     } else {
-      // Re-acquire wake lock if music is actively playing
-      if (currentPlayingItem) {
-        acquireWakeLock();
-      }
-      // Resume hero video if visible in viewport
-      if (heroVideo && heroVideo.paused && isHeroVisible) {
+      // Resume hero video only if visible in viewport AND no audio track is playing
+      if (heroVideo && heroVideo.paused && isHeroVisible && !currentPlayingItem) {
         heroVideo.play().catch(() => {});
       }
     }
