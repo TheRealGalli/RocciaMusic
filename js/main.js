@@ -177,13 +177,19 @@
     try {
       const base = window.location.origin +
         window.location.pathname.replace(/\/[^\/]*$/, '/');
-      
-      const sizes = ['96x96', '128x128', '192x192', '256x256', '384x384', '512x512'];
-      const artwork = [];
-      sizes.forEach((s) => {
-        artwork.push({ src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: s, type: 'image/jpeg' });
-        artwork.push({ src: `${base}giradischi/artwork/${trackId}.png`, sizes: s, type: 'image/png' });
-      });
+
+      // Chrome Android richiede un solo src per size — due entry con stesso size confondono il mini player
+      const artwork = [
+        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '96x96',   type: 'image/jpeg' },
+        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '128x128', type: 'image/jpeg' },
+        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '192x192', type: 'image/jpeg' },
+        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '256x256', type: 'image/jpeg' },
+        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '384x384', type: 'image/jpeg' },
+        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '512x512', type: 'image/jpeg' },
+      ];
+
+      // Imposta playbackState PRIMA dei metadata: Chrome Android registra il player solo se lo stato è già 'playing'
+      navigator.mediaSession.playbackState = 'playing';
 
       navigator.mediaSession.metadata = new MediaMetadata({
         title: title || 'RocciaMusic',
@@ -191,7 +197,6 @@
         album: 'Roccia',
         artwork: artwork
       });
-      navigator.mediaSession.playbackState = 'playing';
 
       // Lock-screen transport controls (iOS Control Center & Android Notification Bar)
       const actionHandlers = [
@@ -253,6 +258,10 @@
           navigator.mediaSession.setActionHandler(action, handler);
         } catch (_) {}
       });
+
+      // Chrome Android mostra la barra di scrubbing nel mini player solo se la posizione viene
+      // inviata immediatamente dopo i metadata — non basta aggiornarla sull'evento timeupdate
+      syncPositionState(audio);
     } catch (err) {
       console.warn('MediaSession initialization error:', err);
     }
@@ -380,7 +389,7 @@
         updatePlayState(true);
         acquireWakeLock();
         setMediaSession(audio, trackId, trackTitle);
-        syncPositionState(audio);
+        // syncPositionState già chiamato dentro setMediaSession per Chrome Android
       });
 
       audio.addEventListener('pause', () => {
