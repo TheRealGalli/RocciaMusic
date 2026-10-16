@@ -5,6 +5,7 @@
   const heroCanvas = document.getElementById('hero-canvas');
   const intro = document.getElementById('intro');
   const slash = intro ? intro.querySelector('.slash') : null;
+  let isHeroVisible = true;
 
   // Active parallax state
   document.body.classList.add('parallax-active');
@@ -14,7 +15,6 @@
     const ctx = heroCanvas.getContext('2d');
     heroVideo.muted = true;
     heroVideo.playsInline = true;
-    let isHeroVisible = true;
 
     // Load lightweight 19KB poster image for instant 0ms display on mobile
     const posterImg = new Image();
