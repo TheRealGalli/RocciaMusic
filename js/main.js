@@ -258,6 +258,8 @@
   };
 
   // --- CYCLE PLAYBACK ---
+  let isAdvancing = false;
+
   const playTrackItem = (item) => {
     if (!item) return;
     // Stop previous track if different
@@ -290,15 +292,21 @@
   };
 
   const playNext = () => {
+    if (isAdvancing) return;
+    isAdvancing = true;
+    setTimeout(() => { isAdvancing = false; }, 600);
     const idx = trackItems.indexOf(currentPlayingItem);
-    const nextItem = trackItems[(idx + 1) % trackItems.length];
-    playTrackItem(nextItem);
+    const nextIdx = (idx + 1) % trackItems.length;
+    playTrackItem(trackItems[nextIdx]);
   };
 
   const playPrev = () => {
+    if (isAdvancing) return;
+    isAdvancing = true;
+    setTimeout(() => { isAdvancing = false; }, 600);
     const idx = trackItems.indexOf(currentPlayingItem);
-    const prevItem = trackItems[(idx - 1 + trackItems.length) % trackItems.length];
-    playTrackItem(prevItem);
+    const prevIdx = (idx - 1 + trackItems.length) % trackItems.length;
+    playTrackItem(trackItems[prevIdx]);
   };
 
   trackItems.forEach((item) => {
@@ -330,7 +338,6 @@
       const trackId = item.dataset.trackId || '';
       const trackTitle = item.querySelector('.track-title')?.textContent.trim() || '';
       let lastSyncSec = -1;
-      let endedFired = false;
 
       audio.addEventListener('loadedmetadata', () => {
         if (durationEl && !isNaN(audio.duration)) {
@@ -359,34 +366,22 @@
       });
 
       audio.addEventListener('ended', () => {
-        endedFired = true;
         updatePlayState(false);
         if (progressFill) progressFill.style.width = '0%';
         if (currentTimeEl) currentTimeEl.textContent = '0:00';
-        // Auto-play next track (cycle) seamlessly
+        // Auto-play next track (cycle) seamlessly: 1 -> 2 -> 3 ... -> 10 -> 1
         playNext();
       });
 
       audio.addEventListener('play', () => {
-        endedFired = false;
         updatePlayState(true);
         setMediaSession(audio, trackId, trackTitle);
       });
 
       audio.addEventListener('pause', () => {
-        if (audio.ended) {
-          updatePlayState(false);
-          if (!endedFired) {
-            endedFired = true;
-            if (progressFill) progressFill.style.width = '0%';
-            if (currentTimeEl) currentTimeEl.textContent = '0:00';
-            playNext();
-          }
-          return;
-        }
         updatePlayState(false);
-        // Only update lockscreen state if this track is still the active one and wasn't transitioning/ended
-        if (currentPlayingItem === item) {
+        // Only update lockscreen state if this track is still the active one and hasn't ended
+        if (currentPlayingItem === item && !audio.ended) {
           if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'paused';
           }
