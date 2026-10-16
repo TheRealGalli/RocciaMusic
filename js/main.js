@@ -137,23 +137,6 @@
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // --- SCREEN WAKE LOCK (keep screen on during audio playback when page is visible) ---
-  let wakeLock = null;
-  const acquireWakeLock = async () => {
-    if ('wakeLock' in navigator && wakeLock === null) {
-      try {
-        wakeLock = await navigator.wakeLock.request('screen');
-        wakeLock.addEventListener('release', () => { wakeLock = null; });
-      } catch (_) {}
-    }
-  };
-  const releaseWakeLock = () => {
-    if (wakeLock !== null) {
-      wakeLock.release().catch(() => {});
-      wakeLock = null;
-    }
-  };
-
   const trackItems = Array.from(document.querySelectorAll('.giradischi-item'));
   let currentPlayingItem = null;
 
@@ -175,21 +158,18 @@
   const setMediaSession = (audio, trackId, title) => {
     if (!('mediaSession' in navigator)) return;
     try {
-      const base = window.location.origin +
-        window.location.pathname.replace(/\/[^\/]*$/, '/');
+      const artJpg = new URL(`giradischi/artwork/${trackId}.jpg`, window.location.href).href;
+      const artPng = new URL(`giradischi/artwork/${trackId}.png`, window.location.href).href;
 
-      // Chrome Android richiede un solo src per size — due entry con stesso size confondono il mini player
       const artwork = [
-        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '96x96',   type: 'image/jpeg' },
-        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '128x128', type: 'image/jpeg' },
-        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '192x192', type: 'image/jpeg' },
-        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '256x256', type: 'image/jpeg' },
-        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '384x384', type: 'image/jpeg' },
-        { src: `${base}giradischi/artwork/${trackId}.jpg`, sizes: '512x512', type: 'image/jpeg' },
+        { src: artJpg, sizes: '96x96',   type: 'image/jpeg' },
+        { src: artJpg, sizes: '128x128', type: 'image/jpeg' },
+        { src: artJpg, sizes: '192x192', type: 'image/jpeg' },
+        { src: artJpg, sizes: '256x256', type: 'image/jpeg' },
+        { src: artJpg, sizes: '384x384', type: 'image/jpeg' },
+        { src: artJpg, sizes: '512x512', type: 'image/jpeg' },
+        { src: artPng, sizes: '512x512', type: 'image/png' }
       ];
-
-      // Imposta playbackState PRIMA dei metadata: Chrome Android registra il player solo se lo stato è già 'playing'
-      navigator.mediaSession.playbackState = 'playing';
 
       navigator.mediaSession.metadata = new MediaMetadata({
         title: title || 'RocciaMusic',
@@ -197,56 +177,58 @@
         album: 'Roccia',
         artwork: artwork
       });
+      navigator.mediaSession.playbackState = 'playing';
 
       // Lock-screen transport controls (iOS Control Center & Android Notification Bar)
       const actionHandlers = [
         ['play', () => {
           if (currentPlayingItem) {
-            const a = currentPlayingItem.querySelector('.track-audio');
+            const a = currentPlayingItem.querySelector('.track-audio') || audio;
             if (a) a.play().catch(() => {});
+          } else {
+            audio.play().catch(() => {});
           }
         }],
         ['pause', () => {
           if (currentPlayingItem) {
-            const a = currentPlayingItem.querySelector('.track-audio');
+            const a = currentPlayingItem.querySelector('.track-audio') || audio;
             if (a) a.pause();
+          } else {
+            audio.pause();
           }
         }],
         ['stop', () => {
           if (currentPlayingItem) {
-            const a = currentPlayingItem.querySelector('.track-audio');
+            const a = currentPlayingItem.querySelector('.track-audio') || audio;
             if (a) {
               a.pause();
               a.currentTime = 0;
             }
             if (currentPlayingItem._stopTrack) currentPlayingItem._stopTrack();
+          } else {
+            audio.pause();
+            audio.currentTime = 0;
           }
         }],
         ['seekbackward', (d) => {
-          if (currentPlayingItem) {
-            const a = currentPlayingItem.querySelector('.track-audio');
-            if (a) {
-              a.currentTime = Math.max(0, a.currentTime - (d.seekOffset || 10));
-              syncPositionState(a);
-            }
+          const a = currentPlayingItem ? (currentPlayingItem.querySelector('.track-audio') || audio) : audio;
+          if (a) {
+            a.currentTime = Math.max(0, a.currentTime - (d.seekOffset || 10));
+            syncPositionState(a);
           }
         }],
         ['seekforward', (d) => {
-          if (currentPlayingItem) {
-            const a = currentPlayingItem.querySelector('.track-audio');
-            if (a) {
-              a.currentTime = Math.min(a.duration || 0, a.currentTime + (d.seekOffset || 10));
-              syncPositionState(a);
-            }
+          const a = currentPlayingItem ? (currentPlayingItem.querySelector('.track-audio') || audio) : audio;
+          if (a) {
+            a.currentTime = Math.min(a.duration || 0, a.currentTime + (d.seekOffset || 10));
+            syncPositionState(a);
           }
         }],
         ['seekto', (d) => {
-          if (currentPlayingItem && d.seekTime != null) {
-            const a = currentPlayingItem.querySelector('.track-audio');
-            if (a) {
-              a.currentTime = d.seekTime;
-              syncPositionState(a);
-            }
+          const a = currentPlayingItem ? (currentPlayingItem.querySelector('.track-audio') || audio) : audio;
+          if (a && d.seekTime != null) {
+            a.currentTime = d.seekTime;
+            syncPositionState(a);
           }
         }],
         ['nexttrack', () => playNext()],
@@ -259,8 +241,6 @@
         } catch (_) {}
       });
 
-      // Chrome Android mostra la barra di scrubbing nel mini player solo se la posizione viene
-      // inviata immediatamente dopo i metadata — non basta aggiornarla sull'evento timeupdate
       syncPositionState(audio);
     } catch (err) {
       console.warn('MediaSession initialization error:', err);
@@ -350,6 +330,7 @@
       const trackId = item.dataset.trackId || '';
       const trackTitle = item.querySelector('.track-title')?.textContent.trim() || '';
       let lastSyncSec = -1;
+      let endedFired = false;
 
       audio.addEventListener('loadedmetadata', () => {
         if (durationEl && !isNaN(audio.duration)) {
@@ -378,6 +359,7 @@
       });
 
       audio.addEventListener('ended', () => {
+        endedFired = true;
         updatePlayState(false);
         if (progressFill) progressFill.style.width = '0%';
         if (currentTimeEl) currentTimeEl.textContent = '0:00';
@@ -386,17 +368,25 @@
       });
 
       audio.addEventListener('play', () => {
+        endedFired = false;
         updatePlayState(true);
-        acquireWakeLock();
         setMediaSession(audio, trackId, trackTitle);
-        // syncPositionState già chiamato dentro setMediaSession per Chrome Android
       });
 
       audio.addEventListener('pause', () => {
+        if (audio.ended) {
+          updatePlayState(false);
+          if (!endedFired) {
+            endedFired = true;
+            if (progressFill) progressFill.style.width = '0%';
+            if (currentTimeEl) currentTimeEl.textContent = '0:00';
+            playNext();
+          }
+          return;
+        }
         updatePlayState(false);
         // Only update lockscreen state if this track is still the active one and wasn't transitioning/ended
-        if (currentPlayingItem === item && !audio.ended) {
-          releaseWakeLock();
+        if (currentPlayingItem === item) {
           if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'paused';
           }
@@ -413,17 +403,6 @@
 
     const togglePlay = () => {
       const isCurrentlyPlaying = item.classList.contains('is-playing');
-
-      // Pre-warm audio elements on first user gesture so iOS Safari authorizes them in background
-      if (!window._audioElementsPrimed) {
-        window._audioElementsPrimed = true;
-        trackItems.forEach((it) => {
-          const a = it.querySelector('.track-audio');
-          if (a && a !== audio && a.paused) {
-            a.load();
-          }
-        });
-      }
 
       if (isCurrentlyPlaying) {
         stopTrack();
@@ -506,15 +485,14 @@
   onScroll();
 
   // Page visibility & standby management:
-  // When leaving page or entering lockscreen/standby, sync audio position to MediaSession and pause hero video to save GPU/RAM.
-  // When returning, resume hero video if visible and refresh sync.
+  // When leaving page or entering lockscreen/standby, sync audio position to MediaSession.
+  // We NEVER pause hero video if audio is playing, avoiding iOS WebKit audio session drop.
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       if (currentPlayingItem) {
         const a = currentPlayingItem.querySelector('.track-audio');
         if (a) syncPositionState(a);
-      }
-      if (heroVideo && !heroVideo.paused) {
+      } else if (heroVideo && !heroVideo.paused) {
         heroVideo.pause();
       }
     } else {
@@ -522,7 +500,6 @@
         heroVideo.play().catch(() => {});
       }
       if (currentPlayingItem) {
-        acquireWakeLock();
         const a = currentPlayingItem.querySelector('.track-audio');
         if (a) syncPositionState(a);
       }
