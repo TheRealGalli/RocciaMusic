@@ -154,6 +154,27 @@
     } catch (_) {}
   };
 
+  // Reliable seek for iOS/Android WebKit & Chrome:
+  // on mobile, setting currentTime while the element is paused or not yet buffered
+  // updates the displayed time but the decoder still starts from 0:00.
+  // We remember the target and re-apply it once the media is actually ready/playing.
+  const seekAudio = (audio, time) => {
+    if (!audio || time == null || isNaN(time)) return;
+    const dur = audio.duration;
+    if (!dur || isNaN(dur) || audio.readyState < 1) {
+      // Metadata not loaded yet: apply as soon as it is
+      audio._pendingSeek = Math.max(0, time);
+      if (audio.readyState === 0) {
+        try { audio.load(); } catch (_) {}
+      }
+      return;
+    }
+    const t = Math.max(0, Math.min(time, dur - 0.25));
+    audio._pendingSeek = t;
+    try { audio.currentTime = t; } catch (_) {}
+    syncPositionState(audio);
+  };
+
   // --- MEDIA SESSION API (lock screen / notification controls on iOS & Android) ---
   const setMediaSession = (audio, trackId, title) => {
     if (!('mediaSession' in navigator)) return;
@@ -202,33 +223,32 @@
             const a = currentPlayingItem.querySelector('.track-audio') || audio;
             if (a) {
               a.pause();
+              a._pendingSeek = null;
               a.currentTime = 0;
             }
             if (currentPlayingItem._stopTrack) currentPlayingItem._stopTrack();
           } else {
             audio.pause();
+            audio._pendingSeek = null;
             audio.currentTime = 0;
           }
         }],
         ['seekbackward', (d) => {
           const a = currentPlayingItem ? (currentPlayingItem.querySelector('.track-audio') || audio) : audio;
           if (a) {
-            a.currentTime = Math.max(0, a.currentTime - (d.seekOffset || 10));
-            syncPositionState(a);
+            seekAudio(a, Math.max(0, a.currentTime - (d.seekOffset || 10)));
           }
         }],
         ['seekforward', (d) => {
           const a = currentPlayingItem ? (currentPlayingItem.querySelector('.track-audio') || audio) : audio;
           if (a) {
-            a.currentTime = Math.min(a.duration || 0, a.currentTime + (d.seekOffset || 10));
-            syncPositionState(a);
+            seekAudio(a, Math.min(a.duration || 0, a.currentTime + (d.seekOffset || 10)));
           }
         }],
         ['seekto', (d) => {
           const a = currentPlayingItem ? (currentPlayingItem.querySelector('.track-audio') || audio) : audio;
           if (a && d.seekTime != null) {
-            a.currentTime = d.seekTime;
-            syncPositionState(a);
+            seekAudio(a, d.seekTime);
           }
         }],
         ['nexttrack', () => playNext()],
@@ -268,6 +288,7 @@
       const prevAudio = prevItem.querySelector('.track-audio');
       if (prevAudio) {
         prevAudio.pause();
+        prevAudio._pendingSeek = null;
         prevAudio.currentTime = 0;
       }
       prevItem.classList.remove('is-playing');
@@ -281,6 +302,7 @@
     currentPlayingItem = item;
     const audio = item.querySelector('.track-audio');
     if (audio) {
+      audio._pendingSeek = null;
       audio.currentTime = 0;
       const playPromise = audio.play();
       if (playPromise !== undefined) {
@@ -328,6 +350,14 @@
       }
     };
 
+    const renderProgress = () => {
+      if (!audio || !audio.duration) return;
+      const pos = audio._pendingSeek != null && audio.paused ? audio._pendingSeek : audio.currentTime;
+      if (progressFill) progressFill.style.width = `${(pos / audio.duration) * 100}%`;
+      if (currentTimeEl) currentTimeEl.textContent = formatTime(pos);
+      if (durationEl) durationEl.textContent = formatTime(audio.duration);
+    };
+
     const stopTrack = () => {
       if (audio) audio.pause();
       updatePlayState(false);
@@ -343,6 +373,10 @@
         if (durationEl && !isNaN(audio.duration)) {
           durationEl.textContent = formatTime(audio.duration);
         }
+        if (audio._pendingSeek != null) {
+          seekAudio(audio, audio._pendingSeek);
+          renderProgress();
+        }
         if (currentPlayingItem === item) {
           syncPositionState(audio);
         }
@@ -350,10 +384,7 @@
 
       audio.addEventListener('timeupdate', () => {
         if (!audio.duration) return;
-        const pct = (audio.currentTime / audio.duration) * 100;
-        if (progressFill) progressFill.style.width = `${pct}%`;
-        if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
-        if (durationEl) durationEl.textContent = formatTime(audio.duration);
+        renderProgress();
 
         // Keep lockscreen scrubber perfectly synchronized every second
         const sec = Math.floor(audio.currentTime);
@@ -373,6 +404,16 @@
         playNext();
       });
 
+      // Once playback has really started, re-apply a pending seek: mobile browsers
+      // may otherwise play from 0:00 while reporting the chosen position.
+      audio.addEventListener('playing', () => {
+        const target = audio._pendingSeek;
+        if (target == null) return;
+        audio._pendingSeek = null;
+        try { audio.currentTime = target; } catch (_) {}
+        if (currentPlayingItem === item) syncPositionState(audio);
+      });
+
       audio.addEventListener('play', () => {
         updatePlayState(true);
         setMediaSession(audio, trackId, trackTitle);
@@ -390,6 +431,7 @@
       });
 
       audio.addEventListener('seeked', () => {
+        if (!audio.paused && audio.readyState >= 3) audio._pendingSeek = null;
         if (currentPlayingItem === item) {
           syncPositionState(audio);
         }
@@ -429,10 +471,8 @@
       if (!audio || !audio.duration) return;
       const rect = progressBar.getBoundingClientRect();
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      audio.currentTime = ratio * audio.duration;
-      if (progressFill) progressFill.style.width = `${ratio * 100}%`;
-      if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
-      syncPositionState(audio);
+      seekAudio(audio, ratio * audio.duration);
+      renderProgress();
     });
   });
 
