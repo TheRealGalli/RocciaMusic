@@ -111,6 +111,19 @@ try {
   assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Mobile page fits');
   await click('[data-track-id="fake-rete-neurale"] .track-play-btn');
   await until('document.querySelector(".track-audio").currentTime > .1');
+  const standby = await evaluate(`(() => {
+    const video = document.querySelector('#hero-video');
+    const before = video.paused;
+    Object.defineProperty(document, 'hidden', {configurable:true, get:()=>window.__standby === true});
+    window.__standby = true;
+    document.dispatchEvent(new Event('visibilitychange'));
+    const result = {audioPaused:document.querySelector('.track-audio').paused, wasPaused:before, videoPaused:video.paused};
+    window.__standby = false;
+    document.dispatchEvent(new Event('visibilitychange'));
+    return result;
+  })()`);
+  assert.equal(standby.audioPaused, false, 'Decorative lifecycle never pauses music');
+  if (!standby.wasPaused) assert.equal(standby.videoPaused, false, 'Preserve iOS video/audio session safeguard');
   const before = await evaluate('document.querySelector(".track-audio").currentTime');
   await evaluate(`window.__shares = []; Object.defineProperty(navigator, 'share', { configurable: true, value: data => { window.__shares.push(data); return Promise.resolve(); }});`);
   await click('[data-track-id="fake-rete-neurale"] .track-share-btn');
@@ -133,6 +146,10 @@ try {
   await click('[data-track-id="underground-impianti"] .track-play-btn');
   await until('document.querySelector("[data-track-id=underground-impianti] .track-audio").currentTime > .1');
   assert.equal(await evaluate('document.querySelector(".track-audio").paused'), true, 'Previous audio stops');
+  await click('[data-track-id="fake-rete-neurale"] .track-play-btn');
+  await until('document.querySelector(".track-audio").currentTime >= 40.1 && !document.querySelector(".track-audio").paused');
+  await click('[data-track-id="underground-impianti"] .track-play-btn');
+  await until('!document.querySelector("[data-track-id=underground-impianti] .track-audio").paused');
   await evaluate('document.querySelector("[data-track-id=underground-impianti] .track-audio").dispatchEvent(new Event("ended"))');
   await until('document.querySelector("[data-track-id=doom-ego]").classList.contains("is-playing")');
   assert.equal(await evaluate('navigator.mediaSession.metadata.title'), "Doom - L'Ego", 'Lock-screen metadata follows next track');
@@ -202,5 +219,5 @@ try {
   server.closeAllConnections();
   closeSync(log);
   await sleep(500);
-  await rm(profile, { recursive: true, force: true });
+  await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }

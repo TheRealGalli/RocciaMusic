@@ -1,133 +1,7 @@
-// RocciaMusic Main JS - Hero video loop, intro animation & interactive audio players
+// RocciaMusic Main JS - Intro animation & interactive audio players
 (function(){
-  const root = document.documentElement;
-  const heroVideo = document.getElementById('hero-video');
-  const heroCanvas = document.getElementById('hero-canvas');
   const intro = document.getElementById('intro');
   const slash = intro ? intro.querySelector('.slash') : null;
-  let isHeroVisible = true;
-
-  // Active parallax state
-  document.body.classList.add('parallax-active');
-
-  // --- HERO VIDEO → CANVAS RENDERING ---
-  if (heroVideo && heroCanvas) {
-    const ctx = heroCanvas.getContext('2d');
-    heroVideo.muted = true;
-    heroVideo.playsInline = true;
-
-    // Load lightweight 19KB poster image for instant 0ms display on mobile
-    const posterImg = new Image();
-    let posterLoaded = false;
-    posterImg.onload = () => {
-      posterLoaded = true;
-      syncCanvasSize();
-      drawPoster();
-    };
-    posterImg.src = 'hero_poster.webp';
-
-    const drawPoster = () => {
-      if (!posterLoaded || (heroVideo && !heroVideo.paused && heroVideo.readyState >= 2)) return;
-      const cw = heroCanvas.width;
-      const ch = heroCanvas.height;
-      if (!cw || !ch) return;
-      const iw = posterImg.naturalWidth || 892;
-      const ih = posterImg.naturalHeight || 690;
-      const scale = Math.min(cw / iw, ch / ih);
-      const dw = iw * scale;
-      const dh = ih * scale;
-      const dx = (cw - dw) / 2;
-      const dy = (ch - dh) / 2;
-      ctx.clearRect(0, 0, cw, ch);
-      ctx.drawImage(posterImg, dx, dy, dw, dh);
-    };
-
-    // Pause canvas drawing loop when hero is out of viewport to save mobile CPU/GPU
-    if ('IntersectionObserver' in window) {
-      const heroObserver = new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-          isHeroVisible = entry.isIntersecting;
-          if (isHeroVisible && heroVideo.paused && !document.hidden) {
-            heroVideo.play().catch(() => {});
-          }
-        }
-      }, { threshold: 0.01 });
-      const heroSection = document.querySelector('.hero');
-      if (heroSection) heroObserver.observe(heroSection);
-    }
-
-    const syncCanvasSize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const rect = heroCanvas.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        heroCanvas.width = Math.round(rect.width * dpr);
-        heroCanvas.height = Math.round(rect.height * dpr);
-      }
-    };
-    window.addEventListener('resize', () => {
-      syncCanvasSize();
-      if (heroVideo.paused) drawPoster();
-    });
-
-    const drawVideoFrame = () => {
-      if (isHeroVisible) {
-        if (!heroVideo.paused && !heroVideo.ended && heroVideo.readyState >= 2) {
-          const vw = heroVideo.videoWidth;
-          const vh = heroVideo.videoHeight;
-          if (vw && vh) {
-            const cw = heroCanvas.width;
-            const ch = heroCanvas.height;
-            const scale = Math.min(cw / vw, ch / vh);
-            const dw = vw * scale;
-            const dh = vh * scale;
-            const dx = (cw - dw) / 2;
-            const dy = (ch - dh) / 2;
-
-            ctx.clearRect(0, 0, cw, ch);
-            ctx.drawImage(heroVideo, dx, dy, dw, dh);
-
-            // Seamless loop: reset 0.4s before end
-            if (heroVideo.duration && heroVideo.currentTime >= heroVideo.duration - 0.4) {
-              heroVideo.currentTime = 0.01;
-            }
-          }
-        } else if (posterLoaded && heroVideo.paused) {
-          drawPoster();
-        }
-      }
-      requestAnimationFrame(drawVideoFrame);
-    };
-
-    const startPlayback = () => {
-      syncCanvasSize();
-      drawPoster();
-      const promise = heroVideo.play();
-      if (promise !== undefined) {
-        promise.catch(() => {
-          const resume = () => {
-            heroVideo.play().catch(() => {});
-            window.removeEventListener('click', resume);
-            window.removeEventListener('touchstart', resume);
-            window.removeEventListener('pointerdown', resume);
-          };
-          window.addEventListener('click', resume);
-          window.addEventListener('touchstart', resume);
-          window.addEventListener('pointerdown', resume);
-        });
-      }
-      drawVideoFrame();
-    };
-
-    heroVideo.addEventListener('loadeddata', startPlayback);
-    heroVideo.addEventListener('ended', () => { heroVideo.currentTime = 0.01; heroVideo.play().catch(() => {}); });
-    
-    // Force immediate start on load & DOMReady
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', startPlayback);
-    } else {
-      startPlayback();
-    }
-  }
 
   // --- TRACK AUDIO PLAYERS ---
   const formatTime = (seconds) => {
@@ -478,9 +352,6 @@
 
   // Respect reduced motion settings
   const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-  if (mq.matches) {
-    document.body.classList.remove('parallax-active');
-  }
 
   // Intro animation: katana slash reveals website
   const runIntro = () => {
@@ -512,32 +383,11 @@
     }, '-=120');
   };
 
-  // Scroll handler for subtle header & parallax variables
-  const onScroll = () => {
-    root.style.setProperty('--scrollY', String(window.scrollY));
-  };
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
-
-  // Page visibility & standby management:
-  // When leaving page or entering lockscreen/standby, sync audio position to MediaSession.
-  // We NEVER pause hero video if audio is playing, avoiding iOS WebKit audio session drop.
+  // Keep the existing audio/lock-screen synchronization independent of visuals.
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (currentPlayingItem) {
-        const a = currentPlayingItem.querySelector('.track-audio');
-        if (a) syncPositionState(a);
-      } else if (heroVideo && !heroVideo.paused) {
-        heroVideo.pause();
-      }
-    } else {
-      if (heroVideo && heroVideo.paused && isHeroVisible) {
-        heroVideo.play().catch(() => {});
-      }
-      if (currentPlayingItem) {
-        const a = currentPlayingItem.querySelector('.track-audio');
-        if (a) syncPositionState(a);
-      }
+    if (currentPlayingItem) {
+      const audio = currentPlayingItem.querySelector('.track-audio');
+      if (audio) syncPositionState(audio);
     }
   });
 
