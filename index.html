@@ -22,7 +22,7 @@
     <link rel="preload" href="css/style.css?v=1.1.9" as="style" />
     <link rel="stylesheet" href="css/style.css?v=1.1.9" />
     <link rel="stylesheet" href="css/animations.css" />
-    <link rel="stylesheet" href="css/sharing.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/sharing.css?v=1.1.0" />
     <link rel="icon" type="image/webp" href="hades-2-icon.webp?v=1.0.2" />
   </head>
   <body>
@@ -345,32 +345,10 @@
       </div>
     </footer>
 
-    <dialog id="track-share-dialog" class="share-dialog" aria-labelledby="share-dialog-title" aria-describedby="share-track-name">
-      <div class="share-dialog-header">
-        <h2 id="share-dialog-title">Condividi la traccia</h2>
-        <button type="button" class="share-close" data-share-close aria-label="Chiudi condivisione" autofocus>×</button>
-      </div>
-      <p id="share-track-name" class="share-track-name"></p>
-      <img class="share-preview" alt="" width="1080" height="1080" />
-      <button type="button" class="share-action share-action-primary" data-share-link>Condividi link</button>
-      <div class="share-link-row">
-        <input class="share-link-input" type="text" readonly aria-label="Link della traccia" />
-        <button type="button" class="share-copy" data-share-copy>Copia</button>
-      </div>
-      <div class="share-formats" role="group" aria-label="Formato da condividere">
-        <button type="button" class="share-format" data-share-format="jpg" aria-pressed="true">Quadrato</button>
-        <button type="button" class="share-format" data-share-format="mp4" aria-pressed="false">Video · 15 s</button>
-      </div>
-      <button type="button" class="share-action" data-share-file disabled>Condividi immagine</button>
-      <a class="share-download" data-share-download download>Salva immagine</a>
-      <p class="share-help">Su WhatsApp condividi il link per l’anteprima del brano. Per una storia Instagram usa il quadrato o il video e aggiungi il link con l’adesivo Link.</p>
-      <p class="share-status" role="status" aria-live="polite"></p>
-    </dialog>
-
     <!-- Anime.js CDN for timeline-based animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
     <script src="js/main.js?v=1.2.3" defer></script>
-    <script src="js/sharing.js?v=1.0.0" defer></script>
+    <script src="js/sharing.js?v=1.1.0" defer></script>
   </body>
 </html>
 

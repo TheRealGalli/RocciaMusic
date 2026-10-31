@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""Build share cards, 15-second MP4s and crawler-readable track links.
+"""Build link-preview images and crawler-readable track links.
 
 Run from any directory: python3 scripts/build_sharing.py
-Requires Pillow and ffmpeg. index.html is the source of truth for tracks.
+Requires Pillow. index.html is the source of truth for tracks.
 """
-import argparse
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
-import shutil
-import subprocess
 from urllib.parse import unquote, urlsplit
 
 from PIL import Image, ImageDraw, ImageFont
@@ -150,35 +147,14 @@ def page(track):
 ''')
 
 
-def video(track):
-    subprocess.run([
-        'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
-        '-loop', '1', '-framerate', '1', '-i', str(OUTPUT / f"{track['id']}.jpg"),
-        '-i', str(ROOT / track['audio']), '-t', '15',
-        '-map', '0:v:0', '-map', '1:a:0',
-        '-vf', 'scale=1080:1080:out_range=tv,format=yuv420p,setsar=1', '-r', '25',
-        '-c:v', 'libx264', '-preset', 'fast', '-tune', 'stillimage', '-crf', '23',
-        '-pix_fmt', 'yuv420p', '-color_range', 'tv', '-c:a', 'aac', '-b:a', '192k',
-        '-af', 'afade=t=out:st=14.5:d=0.5', '-movflags', '+faststart',
-        '-map_metadata', '-1', str(OUTPUT / f"{track['id']}.mp4"),
-    ], check=True)
-
-
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--skip-video', action='store_true', help='Only refresh cards and HTML pages.')
-    args = parser.parse_args()
     tracks = Tracks()
     tracks.feed((ROOT / 'index.html').read_text())
-    if not args.skip_video and not shutil.which('ffmpeg'):
-        raise RuntimeError('ffmpeg is required to create 15-second videos.')
     OUTPUT.mkdir(parents=True, exist_ok=True)
     for track in tracks.items:
         card(track)
         page(track)
-        if not args.skip_video:
-            video(track)
-        print(f"Built sharing assets: {track['title']}", flush=True)
+        print(f"Built link preview: {track['title']}", flush=True)
 
 
 if __name__ == '__main__':
