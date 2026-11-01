@@ -23,11 +23,12 @@
   let lastDraw = -Infinity;
   let playPending = false;
   let gesturePending = false;
+  let musicSessionActive = false;
   const gestureEvent = 'PointerEvent' in window ? 'pointerup' : 'touchend';
 
   const audioIsPlaying = () => Array.from(document.querySelectorAll('.track-audio'))
     .some((audio) => !audio.paused && !audio.ended);
-  const shouldAnimate = () => pageActive && visible && !document.hidden && !motion.matches && !saveData && !failed;
+  const shouldAnimate = () => pageActive && visible && !document.hidden && !motion.matches && !saveData && !failed && !musicSessionActive;
   const stopDrawing = () => {
     ++frameGeneration;
     if (frameID !== null) {
@@ -89,7 +90,7 @@
       // Preserve the site's iOS audio-session safeguard: never pause the video
       // or reset media resources while a song is playing, including in standby.
       if (!audioIsPlaying() && !video.paused) video.pause();
-      if (motion.matches || saveData || failed) showPoster();
+      if (motion.matches || saveData || failed || musicSessionActive) showPoster();
       return;
     }
     if (source && !source.hasAttribute('src')) {
@@ -117,6 +118,15 @@
 
   video.muted = true;
   video.playsInline = true;
+  // On phones, retire the decorative media BEFORE music starts. Pausing or
+  // restarting a second media element during standby can disturb Safari audio.
+  window.addEventListener('rocciamusic:beforeplay', () => {
+    if (!mobile || musicSessionActive) return;
+    musicSessionActive = true;
+    stopDrawing();
+    if (!video.paused) video.pause();
+    showPoster();
+  });
   video.addEventListener('playing', scheduleFrame);
   video.addEventListener('loadeddata', scheduleFrame);
   video.addEventListener('pause', stopDrawing);

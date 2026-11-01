@@ -70,7 +70,7 @@
   const incoming = new URL(window.location.href).searchParams.get('track');
   const target = items.find((item) => item.dataset.trackId === incoming);
   if (!target) return;
-  const audio = target.querySelector('.track-audio');
+  const audio = document.getElementById('music-audio');
   const play = target.querySelector('.track-play-btn');
   if (!audio || !play) return;
   target.classList.add('is-shared-track');
@@ -84,9 +84,9 @@
   // Never create another audio element or change the playback/seek/MediaSession logic.
   const clearPrompt = () => {
     prompt.remove();
-    items.forEach((item) => item.querySelector('.track-audio')?.removeEventListener('play', clearPrompt));
+    audio.removeEventListener('playing', clearPrompt);
   };
-  items.forEach((item) => item.querySelector('.track-audio')?.addEventListener('play', clearPrompt));
+  audio.addEventListener('playing', clearPrompt);
   const intro = document.getElementById('intro');
   if (intro) intro.classList.add('is-hidden');
   requestAnimationFrame(() => target.scrollIntoView({ block: 'center', behavior: 'instant' }));
