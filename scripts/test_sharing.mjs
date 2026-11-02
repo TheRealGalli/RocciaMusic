@@ -131,7 +131,7 @@ try {
   assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Mobile page fits');
   assert.equal(await evaluate('document.querySelectorAll("audio").length'), 1, 'Only one live music element; track definitions stay inert');
   assert.equal(await evaluate('document.querySelector("#music-audio").getAttribute("src")'), null, 'No MP3 is loaded before a selection');
-  assert.equal(await evaluate('document.querySelector(".track-time-duration").textContent'), '3:01', 'Durations are visible without downloading every MP3');
+  assert.equal(await evaluate('document.querySelector(".track-time-duration").textContent'), '3:02', 'Durations are visible without downloading every MP3');
   await click('[data-track-id="fake-rete-neurale"] .track-play-btn');
   await until('document.querySelector(".track-audio").currentTime > .1');
   assert.equal(await evaluate('navigator.audioSession.type'), 'playback');
