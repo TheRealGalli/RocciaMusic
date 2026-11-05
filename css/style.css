@@ -96,6 +96,15 @@ a{color:inherit}
   padding: 40px 0 100px 0;
   background: #000000;
 }
+.album-title {
+  margin: 0 0 48px;
+  color: #F8F9FA;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: .02em;
+  text-align: center;
+}
 .giradischi-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -141,6 +150,10 @@ a{color:inherit}
 }
 .giradischi-item.is-playing .giradischi-img {
   filter: drop-shadow(0 0 22px rgba(230, 0, 30, 1)) drop-shadow(0 0 45px rgba(200, 0, 0, 0.8)) drop-shadow(0 0 80px rgba(160, 0, 0, 0.5));
+}
+/* Match the original series' deck scale and position within the sprite. */
+.giradischi-item[data-track-id="models-intro"] .giradischi-img {
+  transform: translate(1.5%, -3%) scale(.88);
 }
 
 /* Track Title */

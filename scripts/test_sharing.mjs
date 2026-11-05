@@ -98,7 +98,7 @@ try {
     await command('Page.navigate', { url: `http://127.0.0.1:${port}/${suffix}` });
     const match = /^brani\/([^/]+)\/$/.exec(suffix);
     const expected = `http://127.0.0.1:${port}/${match ? '?track=' + match[1] : suffix}`;
-    await until(`location.href === ${JSON.stringify(expected)} && document.readyState === 'complete' && document.querySelectorAll('.track-share-btn').length === 11`);
+    await until(`location.href === ${JSON.stringify(expected)} && document.readyState === 'complete' && document.querySelectorAll('.track-share-btn').length === 12`);
   };
   await command('Runtime.enable');
   await command('Page.enable');
@@ -131,7 +131,13 @@ try {
   assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Mobile page fits');
   assert.equal(await evaluate('document.querySelectorAll("audio").length'), 1, 'Only one live music element; track definitions stay inert');
   assert.equal(await evaluate('document.querySelector("#music-audio").getAttribute("src")'), null, 'No MP3 is loaded before a selection');
-  assert.equal(await evaluate('document.querySelector(".track-time-duration").textContent'), '3:02', 'Durations are visible without downloading every MP3');
+  assert.equal(await evaluate('document.querySelector(".giradischi-item").dataset.trackId'), 'models-intro', 'Models opens the album');
+  assert.equal(await evaluate('document.querySelector("[data-track-id=models-intro] .track-time-duration").textContent'), '2:50');
+  assert.equal(await evaluate('document.querySelectorAll(".track-download-btn").length'), 12, 'Every track has a download link');
+  const download = await evaluate('({href:document.querySelector(".track-download-btn").href, name:document.querySelector(".track-download-btn").download})');
+  assert.equal(download.name, 'Models - Il Cazzo(intro).mp3');
+  assert.equal((await fetch(download.href, {method:'HEAD'})).status, 200, 'The Models MP3 download is reachable');
+  assert.equal(await evaluate('document.querySelector("[data-track-id=fake-rete-neurale] .track-time-duration").textContent'), '3:02', 'Durations are visible without downloading every MP3');
   await click('[data-track-id="fake-rete-neurale"] .track-play-btn');
   await until('document.querySelector(".track-audio").currentTime > .1');
   assert.equal(await evaluate('navigator.audioSession.type'), 'playback');
@@ -185,14 +191,14 @@ try {
   // Real seek and end-to-next must reuse the already unlocked media element.
   await until('document.querySelector(".track-audio").readyState >= 3');
   await evaluate('document.querySelector(".track-audio").currentTime = 40');
-  await until('document.querySelector(".track-audio").currentTime >= 40 && document.querySelector(".track-time-current").textContent !== "0:00"');
+  await until('document.querySelector(".track-audio").currentTime >= 40 && document.querySelector("[data-track-id=fake-rete-neurale] .track-time-current").textContent !== "0:00"');
   await click('[data-track-id="underground-impianti"] .track-play-btn');
   await until('document.querySelector("#music-audio").currentTime > .1');
   assert.equal(await evaluate('document.querySelector("#music-audio").dataset.track'), 'underground-impianti', 'The persistent element switches song');
   await click('[data-track-id="fake-rete-neurale"] .track-play-btn');
   await until('document.querySelector(".track-audio").currentTime >= 40.1 && !document.querySelector(".track-audio").paused');
   await click('[data-track-id="underground-impianti"] .track-play-btn');
-  await until('!document.querySelector("#music-audio").paused');
+  await until('document.querySelector("#music-audio").dataset.track === "underground-impianti" && document.querySelector("#music-audio").readyState >= 3 && document.querySelector("#music-audio").currentTime > .1 && !document.querySelector("#music-audio").seeking');
   await evaluate('document.querySelector("#music-audio").currentTime = document.querySelector("#music-audio").duration - .15');
   await until('document.querySelector("[data-track-id=doom-ego]").classList.contains("is-playing")');
   await until('document.querySelector("#music-audio").dataset.track === "doom-ego" && document.querySelector("#music-audio").currentTime > .1');
@@ -231,7 +237,7 @@ try {
     assert.equal(await evaluate('document.querySelector("#music-audio").dataset.track'), id);
     assert.equal(await evaluate('navigator.mediaSession.metadata.artwork[0].src'), `http://127.0.0.1:${port}/giradischi/artwork/${id}.jpg`);
   }
-  console.log('All 11 incoming track links verified');
+  console.log('All 12 incoming track links verified');
   // Simulated autoplay rejection, followed by an explicit tap; real audio still plays.
   const injection = await command('Page.addScriptToEvaluateOnNewDocument', { source: `
     window.__blockAudio = true;
@@ -259,7 +265,7 @@ try {
   await evaluate(`Object.defineProperty(navigator, 'share', {configurable:true, value:()=>Promise.reject(new DOMException('Denied','NotAllowedError'))});`);
   await click('.track-share-btn');
   await until('window.__copied.length === 1');
-  assert.equal(await evaluate('window.__copied[0]'), `http://127.0.0.1:${port}/brani/fake-rete-neurale/`);
+  assert.equal(await evaluate('window.__copied[0]'), `http://127.0.0.1:${port}/brani/models-intro/`);
   await evaluate(`Object.defineProperty(navigator, 'share', {configurable:true, value:undefined});`);
   await click('.track-share-btn');
   await until('window.__copied.length === 2');
@@ -267,17 +273,23 @@ try {
   await evaluate(`window.__prompts = []; window.prompt = (message,url) => { window.__prompts.push(url); return null; }; Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{writeText:()=>Promise.reject(new Error('Denied'))}});`);
   await click('.track-share-btn');
   await until('window.__prompts.length === 1');
-  assert.equal(await evaluate('window.__prompts[0]'), `http://127.0.0.1:${port}/brani/fake-rete-neurale/`);
+  assert.equal(await evaluate('window.__prompts[0]'), `http://127.0.0.1:${port}/brani/models-intro/`);
   // Mobile visual QA and bounds, also at a narrow 320px viewport.
   await navigate();
-  await evaluate('document.querySelector("[data-track-id=fake-rete-neurale]").scrollIntoView({block:"center"})');
+  await evaluate('document.querySelector("#album-title").scrollIntoView({block:"start"})');
   await sleep(500);
   let shot = await command('Page.captureScreenshot', { format: 'png' });
   await writeFile('/tmp/rocciamusic-mobile-sharing.png', Buffer.from(shot.data, 'base64'));
   await command('Emulation.setDeviceMetricsOverride', { width: 320, height: 568, deviceScaleFactor: 1, mobile: true });
   assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true);
+  await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1050, deviceScaleFactor: 1, mobile: false });
+  await evaluate('document.querySelector("#album-title").scrollIntoView({block:"start"})');
+  await until('Array.from(document.querySelectorAll(".giradischi-img")).slice(0,3).every(image => image.complete && image.naturalWidth > 0)');
+  await sleep(500);
+  shot = await command('Page.captureScreenshot', { format: 'png' });
+  await writeFile('/tmp/rocciamusic-desktop-album.png', Buffer.from(shot.data, 'base64'));
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
-  console.log('PASS: direct native URL sharing, 11 deep links, mobile layout, one unlocked audio element, real end-to-next, lock-screen play/pause/seek/next/previous, reachable 512px artwork, simulated standby, autoplay fallback and no JavaScript errors.');
+  console.log('PASS: direct native URL sharing, 12 deep links, mobile layout, one unlocked audio element, real end-to-next, lock-screen play/pause/seek/next/previous, reachable 512px artwork, simulated standby, autoplay fallback and no JavaScript errors.');
   console.log('Screenshot: /tmp/rocciamusic-mobile-sharing.png');
 } finally {
   if (socket) socket.close();

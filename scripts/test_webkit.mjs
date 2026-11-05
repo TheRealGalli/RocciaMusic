@@ -75,7 +75,7 @@ try {
   });
   const home = `http://127.0.0.1:${port}/`;
   await page.goto(home);
-  await page.waitForFunction(() => document.querySelectorAll('.track-share-btn').length === 11);
+  await page.waitForFunction(() => document.querySelectorAll('.track-share-btn').length === 12);
   assert.equal(await page.locator('audio').count(), 1);
   assert.equal(await page.locator('#music-audio').getAttribute('src'), null);
   await page.locator('[data-track-id="fake-rete-neurale"] .track-play-btn').click();
@@ -124,7 +124,9 @@ try {
   await page.evaluate(() => window.__mediaHandlers.previoustrack());
   await page.waitForFunction(() => document.querySelector('#music-audio').dataset.track === 'fake-rete-neurale' && document.querySelector('#music-audio').currentTime > .1);
   const ids = await page.locator('.giradischi-item').evaluateAll(items => items.map(item => item.dataset.trackId));
-  for (const id of [...ids.slice(1), ids[0]]) {
+  const currentID = await page.locator('#music-audio').getAttribute('data-track');
+  const nextIndex = ids.indexOf(currentID) + 1;
+  for (const id of [...ids.slice(nextIndex), ...ids.slice(0, nextIndex)]) {
     await page.evaluate(() => window.__mediaHandlers.nexttrack());
     await page.waitForFunction(id => document.querySelector('#music-audio').dataset.track === id && document.querySelector('#music-audio').currentTime > .1, id);
     assert.ok((await page.evaluate(() => navigator.mediaSession.metadata.artwork[0].src)).endsWith(`/${id}.jpg`));

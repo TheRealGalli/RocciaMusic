@@ -1,18 +1,23 @@
-/* Compact share control, separate from the existing audio controls. */
+/* Download and share sit together, separate from the existing audio controls. */
 .giradischi-item.share-enabled { padding-top: 44px; }
-.track-share-btn {
+.track-actions {
   position: absolute; top: 0; right: 0; z-index: 2;
+  display: flex; gap: 2px;
+}
+.track-share-btn, .track-download-btn {
+  position: relative; z-index: 0;
   width: 44px; height: 44px; padding: 0;
   display: grid; place-items: center;
   border: 0; border-radius: 50%; background: transparent; color: #e3e5e9; cursor: pointer;
+  text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 }
-.track-share-btn::before {
+.track-share-btn::before, .track-download-btn::before {
   content: ''; position: absolute; inset: 5px; z-index: -1;
   border-radius: 50%; background: #141417; border: 1px solid #36363d;
 }
-.track-share-btn:hover::before { background: #27272e; border-color: #858590; }
-.track-share-btn:focus-visible, .shared-track-start:focus-visible {
+.track-share-btn:hover::before, .track-download-btn:hover::before { background: #27272e; border-color: #858590; }
+.track-share-btn:focus-visible, .track-download-btn:focus-visible, .shared-track-start:focus-visible {
   outline: 2px solid #fff; outline-offset: 3px;
 }
 .is-shared-track { scroll-margin-top: 76px; }

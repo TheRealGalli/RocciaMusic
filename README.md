@@ -1,6 +1,6 @@
 # RocciaMusic.com (Static)
 
-Sito musicale statico per GitHub Pages, con hero loop trasparente su canvas e 11 giradischi interattivi con player audio personalizzato.
+Sito musicale statico per GitHub Pages, con hero loop trasparente su canvas e 12 giradischi interattivi con player audio personalizzato.
 
 Il pulsante su ogni traccia apre direttamente il pannello nativo di condivisione di iPhone/Android, passando solo titolo e URL. Nei browser senza condivisione nativa copia il link, oppure permette di copiarlo manualmente se manca anche l’accesso agli appunti. Non ci sono menu intermedi né allegati da condividere.
 
@@ -10,7 +10,7 @@ Dopo aver aggiunto o aggiornato un brano in `index.html`, rigenerare le anteprim
 
 Verifica nel browser: `node scripts/test_sharing.mjs` (Node 22+ e Google Chrome; impostare `CHROME_BIN` se necessario). Il test usa un profilo temporaneo e un server locale con supporto alle richieste Range, per verificare anche lo spostamento nel brano. I test della condivisione controllano i dati passati al menu nativo; la visualizzazione finale va provata su WhatsApp/Instagram reali, che gestiscono autonomamente anteprime dei link.
 
-Il player in `js/main.js` usa un unico `<audio id="music-audio">` per tutti gli 11 brani: cambia la sorgente nello stesso elemento avviato dal tap, anche al termine del brano e con i comandi dello schermo bloccato. Le sorgenti nelle schede sono dichiarazioni in `<template>`, senza decodificatori o download attivi. La posizione di ogni brano è conservata quando si cambia scheda; pausa e ripresa mantengono selezione e copertina. Le durate iniziali sono in `data-duration` (secondi) e vengono aggiornate con i metadati del file selezionato: aggiornare anche questi valori quando si sostituisce un MP3.
+Il player in `js/main.js` usa un unico `<audio id="music-audio">` per tutti i 12 brani: cambia la sorgente nello stesso elemento avviato dal tap, anche al termine del brano e con i comandi dello schermo bloccato. Le sorgenti nelle schede sono dichiarazioni in `<template>`, senza decodificatori o download attivi. La posizione di ogni brano è conservata quando si cambia scheda; pausa e ripresa mantengono selezione e copertina. Le durate iniziali sono in `data-duration` (secondi) e vengono aggiornate con i metadati del file selezionato: aggiornare anche questi valori quando si sostituisce un MP3.
 
 MediaSession pubblica la copertina JPEG 512×512 effettiva in `giradischi/artwork/` e registra una volta sola play, pausa, stop, seek, avanti e indietro. Quando disponibile, Audio Session API usa il tipo `playback`. Le API opzionali non impediscono la riproduzione se assenti o rifiutate. Se l’avvio fallisce compare un invito a riprovare; la pagina non finge che il brano stia suonando.
 
@@ -20,5 +20,4 @@ Misure ripetibili: `node scripts/test_performance.mjs after`; `node scripts/test
 
 `node scripts/test_sharing.mjs` verifica anche permessi di riproduzione per elemento, fine reale del brano, comandi MediaSession, copertina raggiungibile e secondo piano simulato. Per WebKit: installare Playwright e il relativo browser (`npm install --no-save playwright`, `npx playwright install webkit`), poi eseguire `node scripts/test_webkit.mjs`; `PLAYWRIGHT_MODULE` permette di usare un’installazione esistente. Il profilo iPhone e gli eventi simulati non riproducono la sospensione del processo da parte di iOS. La verifica finale richiede Safari su iPhone: avviare un brano, bloccare subito lo schermo, controllare audio e copertina, usare pausa/ripresa/seek, attendere il brano successivo e ripetere passando a un’altra app.
 
-
-
+SuperPersona è il titolo dell’album, centrato sotto NuovoRap e sopra i giradischi; Models - Il Cazzo (intro) è la prima delle 12 tracce. Il suo giradischi riprende la pixel art, il metallo scuro e le proporzioni dei file originali, con due corna e un sottile bordo rosa. Sorgente PNG, riferimenti e prompt sono documentati in `docs/models-artwork.md`. Accanto a Condividi, ogni traccia ha un collegamento Scarica MP3 alla propria sorgente originale; il download non avvia né interrompe il player.

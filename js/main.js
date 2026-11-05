@@ -59,7 +59,7 @@
         navigator.mediaSession.metadata = new MediaMetadata({
           title: currentTrack.title,
           artist: 'RocciaMusic',
-          album: 'Roccia',
+          album: 'SuperPersona',
           // The files really are 512x512 JPEGs. Do not advertise fictitious sizes.
           artwork: [{
             src: new URL(`giradischi/artwork/${currentTrack.id}.jpg`, document.baseURI).href,

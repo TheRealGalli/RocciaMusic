@@ -40,9 +40,24 @@
     button.setAttribute('aria-label', `Condividi ${title}`);
     button.title = 'Condividi traccia';
     button.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>';
-    // A sibling of the vinyl: sharing never triggers its playback handler.
+    const source = item.querySelector('.track-source')?.content.querySelector('audio')?.getAttribute('src');
+    const actions = document.createElement('div');
+    actions.className = 'track-actions';
+    if (source) {
+      const download = document.createElement('a');
+      download.className = 'track-download-btn';
+      download.href = source;
+      download.download = decodeURIComponent(new URL(source, siteRoot).pathname.split('/').pop());
+      download.setAttribute('aria-label', `Scarica ${title} in MP3`);
+      download.title = 'Scarica MP3';
+      download.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>';
+      download.addEventListener('click', (event) => event.stopPropagation());
+      actions.append(download);
+    }
+    actions.append(button);
+    // Siblings of the vinyl: neither action triggers its playback handler.
     item.classList.add('share-enabled');
-    item.prepend(button);
+    item.prepend(actions);
     button.addEventListener('click', async (event) => {
       event.stopPropagation();
       if (sharing) return;
