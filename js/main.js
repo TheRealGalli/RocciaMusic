@@ -1,4 +1,4 @@
-// RocciaMusic: a persistent music player, separate from decorative media.
+// RocciaMusic.com: a persistent music player, separate from decorative media.
 (function () {
   const intro = document.getElementById('intro');
   const slash = intro ? intro.querySelector('.slash') : null;
@@ -58,8 +58,8 @@
       if (typeof MediaMetadata === 'function') {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: currentTrack.title,
-          artist: 'RocciaMusic',
-          album: 'SuperPersona',
+          artist: 'RocciaMusic.com',
+          album: 'SUPERPERSONA',
           // The files really are 512x512 JPEGs. Do not advertise fictitious sizes.
           artwork: [{
             src: new URL(`giradischi/artwork/${currentTrack.id}.jpg`, document.baseURI).href,

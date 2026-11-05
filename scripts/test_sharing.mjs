@@ -127,6 +127,7 @@ try {
   ` });
   await navigate();
   console.log('Mobile home and share controls loaded');
+  assert.equal(await evaluate('document.title'), 'SUPERPERSONA | RocciaMusic.com');
   assert.equal(await evaluate('Array.from(document.querySelectorAll(".track-audio")).filter(a => !a.paused).length'), 0, 'No audio on ordinary visit');
   assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Mobile page fits');
   assert.equal(await evaluate('document.querySelectorAll("audio").length'), 1, 'Only one live music element; track definitions stay inert');
@@ -141,6 +142,8 @@ try {
   await click('[data-track-id="fake-rete-neurale"] .track-play-btn');
   await until('document.querySelector(".track-audio").currentTime > .1');
   assert.equal(await evaluate('navigator.audioSession.type'), 'playback');
+  assert.equal(await evaluate('navigator.mediaSession.metadata.artist'), 'RocciaMusic.com');
+  assert.equal(await evaluate('navigator.mediaSession.metadata.album'), 'SUPERPERSONA');
   const standby = await evaluate(`(() => {
     const video = document.querySelector('#hero-video');
     const before = video.paused;

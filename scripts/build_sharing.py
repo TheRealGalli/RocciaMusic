@@ -6,6 +6,7 @@ Requires Pillow. index.html is the source of truth for tracks.
 """
 from html import escape
 from html.parser import HTMLParser
+from hashlib import sha256
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -13,6 +14,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = 'https://' + (ROOT / 'CNAME').read_text().strip()
+SITE_NAME = 'RocciaMusic.com'
+ALBUM_TITLE = 'SUPERPERSONA'
 OUTPUT = ROOT / 'assets' / 'share'
 
 
@@ -72,7 +75,7 @@ def card(track):
     draw = ImageDraw.Draw(image)
     draw.rounded_rectangle((28, 28, 1052, 1052), radius=32, outline='#29292f', width=2)
     draw.rounded_rectangle((60, 61, 68, 87), radius=4, fill='#f22443')
-    draw.text((84, 55), 'ROCCIAMUSIC', font=font(30, True), fill='#f5f5f7')
+    draw.text((84, 55), ALBUM_TITLE, font=font(30, True), fill='#f5f5f7')
     draw.text((1020, 61), 'ASCOLTA IL BRANO', font=font(21), fill='#a6a6b2', anchor='ra')
     sprite = Image.open(ROOT / track['image']).convert('RGBA')
     sprite = sprite.crop(sprite.getchannel('A').getbbox())
@@ -85,7 +88,7 @@ def card(track):
     draw.text((60, 822), title, font=font(size, True), fill='#ffffff')
     draw.text((62, 916), subtitle, font=font(36), fill='#c5c5cf')
     draw.line((60, 985, 1020, 985), fill='#34343d', width=2)
-    draw.text((62, 1004), 'rocciamusic.com', font=font(22), fill='#a6a6b2')
+    draw.text((62, 1004), SITE_NAME, font=font(22), fill='#a6a6b2')
     draw.text((1020, 1004), 'PREMI PLAY', font=font(22, True), fill='#f22443', anchor='ra')
     image.save(OUTPUT / f"{track['id']}.jpg", quality=93, optimize=True)
 
@@ -93,9 +96,11 @@ def card(track):
 def page(track):
     track_id = track['id']
     title = escape(track['title'], quote=True)
-    description = escape(f"Ascolta {track['title']} su RocciaMusic. Apri il brano e premi play.", quote=True)
+    description = escape(f"Ascolta {track['title']} su {SITE_NAME}. Apri il brano e premi play.", quote=True)
     url = f'{SITE}/brani/{track_id}/'
-    image_url = f'{SITE}/assets/share/{track_id}.jpg'
+    image_version = sha256((OUTPUT / f'{track_id}.jpg').read_bytes()).hexdigest()[:12]
+    image_path = f'assets/share/{track_id}.jpg?v={image_version}'
+    image_url = f'{SITE}/{image_path}'
     destination = f'../../?track={track_id}'
     directory = ROOT / 'brani' / track_id
     directory.mkdir(parents=True, exist_ok=True)
@@ -106,10 +111,10 @@ def page(track):
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title} | RocciaMusic</title>
+    <title>{title} | {SITE_NAME}</title>
     <meta name="description" content="{description}" />
     <link rel="canonical" href="{url}" />
-    <meta property="og:site_name" content="RocciaMusic" />
+    <meta property="og:site_name" content="{SITE_NAME}" />
     <meta property="og:locale" content="it_IT" />
     <meta property="og:type" content="music.song" />
     <meta property="og:title" content="{title}" />
@@ -137,9 +142,9 @@ def page(track):
   </head>
   <body>
     <main>
-      <img src="../../assets/share/{track_id}.jpg" alt="Copertina di {title}" width="1080" height="1080" />
+      <img src="../../{image_path}" alt="Copertina di {title}" width="1080" height="1080" />
       <h1>{title}</h1>
-      <a href="{destination}">Ascolta su RocciaMusic</a>
+      <a href="{destination}">Ascolta su {SITE_NAME}</a>
     </main>
     <script>window.location.replace('{destination}');</script>
   </body>

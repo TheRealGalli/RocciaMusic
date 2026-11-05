@@ -111,7 +111,7 @@ a{color:inherit}
   grid-template-columns: 1fr 1fr;
   gap: 48px 24px;
   justify-items: center;
-  align-items: center;
+  align-items: start;
 }
 @media (min-width: 900px) {
   .giradischi-section {
@@ -131,7 +131,8 @@ a{color:inherit}
   position: relative;
 }
 .giradischi-vinyl-wrap {
-  width: 100%;
+  width: min(100%, 320px);
+  aspect-ratio: 1088 / 990;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -141,10 +142,14 @@ a{color:inherit}
 }
 .giradischi-img {
   -webkit-user-drag: none;
+  position: absolute;
+  left: calc(50% + var(--art-x, -1.5%));
+  top: calc(50% + var(--art-y, 0%));
   width: 100%;
-  max-width: 320px;
+  max-width: none;
   height: auto;
   object-fit: contain;
+  transform: translate(-50%, -50%) scale(var(--art-scale, 1));
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9));
   transition: filter 0.35s ease, transform 0.35s ease;
   display: block;
@@ -152,9 +157,16 @@ a{color:inherit}
 .giradischi-item.is-playing .giradischi-img {
   filter: drop-shadow(0 0 22px rgba(230, 0, 30, 1)) drop-shadow(0 0 45px rgba(200, 0, 0, 0.8)) drop-shadow(0 0 80px rgba(160, 0, 0, 0.5));
 }
-/* Match the original series' deck scale and position within the sprite. */
-.giradischi-item[data-track-id="models-intro"] .giradischi-img {
-  transform: translate(1.5%, -3%) scale(.88);
+/* Anchor the rectangular deck, independently of horns and other decoration. */
+.giradischi-item[data-track-id="models-intro"] {
+  --art-scale: .88;
+  --art-x: 0%;
+  --art-y: -3.5%;
+}
+.giradischi-item[data-track-id="fake-rete-neurale"] {
+  --art-scale: 1.04;
+  --art-x: -.5%;
+  --art-y: 5%;
 }
 
 /* Track Title */
@@ -306,7 +318,7 @@ a{color:inherit}
   .site-title{ font-size: 0.95rem }
   .giradischi-section{ padding: 24px 0 60px 0 }
   .giradischi-grid{ gap: 36px 12px }
-  .giradischi-img{ max-width: 175px }
+  .giradischi-vinyl-wrap{ max-width: 175px }
   .track-title {
     font-size: 0.85rem;
     letter-spacing: 0.04em;
