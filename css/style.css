@@ -395,3 +395,13 @@ a{color:inherit}
 }
 
 
+
+/* Complete album: unreleased songs are visual entries, excluded from playback. */
+.album-legend { text-align:center; color:#c8c8ce; margin:-12px 0 36px; }
+.album-legend span, .is-unreleased .track-title, .is-unreleased .track-number { color:#bca5ff; }
+.track-number { color:#a9a9b2; font-size:.75rem; letter-spacing:.16em; margin-top:12px; }
+.track-number + .track-title { margin-top:6px; }
+.giradischi-item.is-unreleased { cursor:default; padding-top:44px; }
+.is-unreleased .track-title { flex-wrap:wrap; column-gap:.4em; }
+.cipher-title { letter-spacing:.13em; font-size:.8em; }
+.track-unavailable { margin:4px 0 0; color:#c0afeb; font-size:.78rem; text-align:center; letter-spacing:.04em; }

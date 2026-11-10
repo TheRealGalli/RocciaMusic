@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const items = Array.from(document.querySelectorAll('.giradischi-item'));
+  const items = Array.from(document.querySelectorAll('.giradischi-item:not([data-unreleased])'));
   if (!items.length) return;
   const siteRoot = new URL('.', document.baseURI);
   const trackURL = (id) => new URL(`brani/${id}/`, siteRoot).href;

@@ -7,7 +7,7 @@
     if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
     return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
   };
-  const tracks = Array.from(document.querySelectorAll('.giradischi-item'), (item) => {
+  const tracks = Array.from(document.querySelectorAll('.giradischi-item:not([data-unreleased])'), (item) => {
     const source = item.querySelector('.track-source');
     return {
       item,

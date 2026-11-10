@@ -228,7 +228,11 @@ try {
   await sleep(650);
   await evaluate('document.querySelector("#music-audio").pause()');
   // All incoming links retain the tap-to-play fallback under Safari-style policy.
-  const ids = await evaluate('Array.from(document.querySelectorAll(".giradischi-item"), item => item.dataset.trackId)');
+  const ids = await evaluate('Array.from(document.querySelectorAll(".giradischi-item:not([data-unreleased])"), item => item.dataset.trackId)');
+  assert.equal(await evaluate('document.querySelectorAll(".giradischi-item").length'), 24, 'Complete album has 24 artworks');
+  assert.equal(await evaluate('document.querySelectorAll("[data-unreleased]").length'), 12, '12 unreleased tracks');
+  assert.equal(await evaluate('document.querySelectorAll("[data-unreleased] .track-play-btn, [data-unreleased] .track-source, [data-unreleased] .track-share-btn").length'), 0, 'Unavailable tracks cannot play or share');
+  assert.equal(await evaluate('document.querySelectorAll(".cipher-title").length'), 10, '10 unannounced titles are masked');
   console.log('Player seek, next track and MediaSession verified');
   for (const id of ids) {
     await navigate(`brani/${id}/`);

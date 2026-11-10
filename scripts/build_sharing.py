@@ -32,7 +32,7 @@ class Tracks(HTMLParser):
         a = dict(attrs)
         if tag == 'div':
             self.depth += 1
-        if 'giradischi-item' in a.get('class', '').split():
+        if 'giradischi-item' in a.get('class', '').split() and 'data-unreleased' not in a:
             self.current = {'id': a['data-track-id'], 'title': ''}
             self.track_depth = self.depth
         if self.current is None:

@@ -123,7 +123,7 @@ try {
   assert.equal(await page.evaluate(() => navigator.mediaSession.metadata.title), 'Underground - Gli Impianti');
   await page.evaluate(() => window.__mediaHandlers.previoustrack());
   await page.waitForFunction(() => document.querySelector('#music-audio').dataset.track === 'fake-rete-neurale' && document.querySelector('#music-audio').currentTime > .1);
-  const ids = await page.locator('.giradischi-item').evaluateAll(items => items.map(item => item.dataset.trackId));
+  const ids = await page.locator('.giradischi-item:not([data-unreleased])').evaluateAll(items => items.map(item => item.dataset.trackId));
   const currentID = await page.locator('#music-audio').getAttribute('data-track');
   const nextIndex = ids.indexOf(currentID) + 1;
   for (const id of [...ids.slice(nextIndex), ...ids.slice(0, nextIndex)]) {
