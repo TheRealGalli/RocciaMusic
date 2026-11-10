@@ -1,5 +1,5 @@
-// Browser regression checks, without npm dependencies (Node >= 22 and Chrome).
-// Run: node scripts/test_sharing.mjs
+// Mobile rendering and loading checks, without npm dependencies (Node >= 22 and Chrome).
+// Run: node scripts/test_performance.mjs current
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -98,7 +98,7 @@ try {
     await command('Page.navigate', { url: `http://127.0.0.1:${port}/${suffix}` });
     const match = /^brani\/([^/]+)\/$/.exec(suffix);
     const expected = `http://127.0.0.1:${port}/${match ? '?track=' + match[1] : suffix}`;
-    await until(`location.href === ${JSON.stringify(expected)} && document.readyState === 'complete' && document.querySelectorAll('.track-share-btn').length === 11`);
+    await until(`location.href === ${JSON.stringify(expected)} && document.readyState === 'complete' && document.querySelectorAll('.track-share-btn').length === 12`);
   };
   await command('Runtime.enable');
   await command('Page.enable');
@@ -190,6 +190,7 @@ try {
   };
   const label=process.argv[2]||'current';
   if(label !== 'before') {
+    assert.equal(result.transferredBytes.audio, 0, 'No MP3 bytes before a track is selected');
     assert.equal(result.offscreenCallbacksIn2s, 0, 'No decorative callbacks offscreen');
     assert.equal(result.canvasResetsFor100IdenticalResizeEvents, 0, 'No duplicate allocations on toolbar resize');
     assert.ok(result.maxPendingRAF <= 1 && result.maxPendingVideo <= 1, 'At most one rendering chain');

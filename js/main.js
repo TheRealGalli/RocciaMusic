@@ -29,24 +29,34 @@
   let lastSyncSec = -1;
 
   const listeningBar = document.getElementById('listening-bar');
+  const listeningTitle = listeningBar?.querySelector('.listening-title');
+  const listeningEmoji = listeningBar?.querySelector('.listening-emoji');
+  const listeningAlbum = listeningBar?.querySelector('.listening-album');
+  const listeningToggle = listeningBar?.querySelector('.listening-toggle');
+  const listeningTime = listeningBar?.querySelector('.listening-time');
+  const listeningProgress = listeningBar?.querySelector('.listening-progress i');
   const visiblePlayers = new Set();
   const syncListeningBar = () => {
     if (!listeningBar) return;
-    const shown = currentTrack && !visiblePlayers.has(currentTrack.id);
-    listeningBar.hidden = !shown;
-    document.body.classList.toggle('has-listening-bar', Boolean(shown));
-    if (!currentTrack) return;
+    const shown = Boolean(currentTrack && !visiblePlayers.has(currentTrack.id));
+    if (listeningBar.hidden !== !shown) {
+      listeningBar.hidden = !shown;
+      document.body.classList.toggle('has-listening-bar', shown);
+      if (!shown) listeningBar.classList.remove('is-playing');
+    }
+    if (!shown) return;
     if (listeningBar.dataset.track !== currentTrack.id) {
       listeningBar.dataset.track = currentTrack.id;
-      listeningBar.querySelector('.listening-title').textContent = currentTrack.title;
-      listeningBar.querySelector('.listening-emoji').textContent = currentTrack.item.querySelector('.track-emoji')?.textContent || '♫';
-      listeningBar.querySelector('.listening-album').textContent = `${currentTrack.item.querySelector('.track-number')?.textContent || ''} / 24 · SUPERPERSONA`;
+      listeningTitle.textContent = currentTrack.title;
+      listeningEmoji.textContent = currentTrack.item.querySelector('.track-emoji')?.textContent || '♫';
+      listeningAlbum.textContent = `${currentTrack.item.querySelector('.track-number')?.textContent || ''} / 24 · SUPERPERSONA`;
     }
     const playing = wantsPlayback && !audio.paused;
     listeningBar.classList.toggle('is-playing', playing);
-    listeningBar.querySelector('.listening-toggle').setAttribute('aria-label', playing ? 'Pausa' : 'Riprendi');
-    listeningBar.querySelector('.listening-time').textContent = formatTime(currentTrack.position);
-    listeningBar.querySelector('.listening-progress i').style.width = `${currentTrack.duration ? Math.min(100, currentTrack.position / currentTrack.duration * 100) : 0}%`;
+    listeningToggle.setAttribute('aria-label', playing ? 'Pausa' : 'Riprendi');
+    const time = formatTime(currentTrack.position);
+    if (listeningTime.textContent !== time) listeningTime.textContent = time;
+    listeningProgress.style.width = `${currentTrack.duration ? Math.min(100, currentTrack.position / currentTrack.duration * 100) : 0}%`;
   };
 
   const renderProgress = (track) => {

@@ -4,7 +4,10 @@
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const alphabet = 'ABCDEFGHKLMNPQRSTVXYZ0123456789';
   const visible = new Set();
+  const mobile = window.matchMedia('(pointer: coarse), (max-width: 640px)').matches;
   let timer;
+  let scrollTimer;
+  let scrolling = false;
   const randomChar = () => alphabet[Math.floor(Math.random() * alphabet.length)];
   const states = cards.map((card) => ({
     card,
@@ -14,7 +17,7 @@
   }));
   const animate = () => {
     timer = null;
-    if (document.hidden || reducedMotion.matches || !visible.size) return;
+    if (document.hidden || reducedMotion.matches || scrolling || !visible.size) return;
     states.forEach((state) => {
       if (!visible.has(state.card)) return;
       if (state.title) {
@@ -25,7 +28,7 @@
       }
       if (state.time) state.time.textContent = `${Math.floor(Math.random() * 10)}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`;
     });
-    timer = setTimeout(animate, 180);
+    timer = setTimeout(animate, mobile ? 240 : 180);
   };
   const sync = () => {
     clearTimeout(timer);
@@ -46,10 +49,17 @@
         else visible.delete(target);
       });
       sync();
-    }, { rootMargin: '60px' });
+    });
     cards.forEach((card) => observer.observe(card));
   } else cards.forEach((card) => visible.add(card));
   document.addEventListener('visibilitychange', sync);
+  if (mobile) window.addEventListener('scroll', () => {
+    // Leave the main thread to touch/momentum scrolling; resume once it settles.
+    scrolling = true;
+    clearTimeout(timer);
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => { scrolling = false; sync(); }, 180);
+  }, { passive: true });
   reducedMotion.addEventListener('change', sync);
   sync();
 })();

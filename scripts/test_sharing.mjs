@@ -145,6 +145,31 @@ try {
   await until('/^[0-9]:[0-5][0-9]$/.test(document.querySelector("[data-track-id=inedito-01] [data-scramble=time]").textContent)');
   const titleMotion = await evaluate('document.querySelector("[data-track-id=inedito-01] [data-scramble=title]").textContent');
   await until(`document.querySelector("[data-track-id=inedito-01] [data-scramble=title]").textContent !== ${JSON.stringify(titleMotion)}`);
+  await evaluate(`(() => {
+    window.__scrambleChanges = 0;
+    window.__scrambleObserver = new MutationObserver(records => {
+      window.__scrambleChanges += records.filter(record => record.target.closest?.('[data-scramble]')).length;
+    });
+    window.__scrambleObserver.observe(document.querySelector('[data-track-id=inedito-01]'), {childList:true,subtree:true});
+    window.scrollBy(0, 1);
+  })()`);
+  await sleep(80);
+  const scrollingStart = await evaluate('window.__scrambleChanges');
+  await evaluate(`new Promise(resolve => {let step=0; const tick=()=>{window.scrollBy(0,step%2?1:-1); if(++step<12)setTimeout(tick,50);else resolve();};tick();})`);
+  assert.equal(await evaluate('window.__scrambleChanges'), scrollingStart, 'Title and duration updates yield to mobile scrolling');
+  await until(`window.__scrambleChanges > ${scrollingStart}`);
+  await evaluate('window.scrollTo(0,0)');
+  await sleep(500);
+  const offscreenChanges = await evaluate('window.__scrambleChanges');
+  await sleep(500);
+  assert.equal(await evaluate('window.__scrambleChanges'), offscreenChanges, 'No offscreen title or duration updates');
+  await evaluate(`document.querySelector('[data-track-id=inedito-01]').scrollIntoView({block:'center'})`);
+  await sleep(500);
+  await evaluate(`Object.defineProperty(document, 'hidden', {configurable:true,value:true}); document.dispatchEvent(new Event('visibilitychange'));`);
+  const hiddenChanges = await evaluate('window.__scrambleChanges');
+  await sleep(500);
+  assert.equal(await evaluate('window.__scrambleChanges'), hiddenChanges, 'Motion stops when the page is hidden');
+  await evaluate(`delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); window.__scrambleObserver.disconnect();`);
   const idleSource = await evaluate('document.querySelector("#music-audio").getAttribute("src")');
   await click('[data-track-id="inedito-01"] .track-play-btn');
   assert.equal(await evaluate('document.querySelector("#music-audio").getAttribute("src")'), idleSource, 'Unreleased emoji does not select audio');
