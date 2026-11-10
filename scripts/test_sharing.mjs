@@ -183,19 +183,7 @@ try {
   assert.equal(await evaluate('navigator.audioSession.type'), 'playback');
   assert.equal(await evaluate('navigator.mediaSession.metadata.artist'), 'RocciaMusic.com');
   assert.equal(await evaluate('navigator.mediaSession.metadata.album'), 'SUPERPERSONA');
-  await evaluate('document.querySelector(".site-footer").scrollIntoView()');
-  await until('!document.querySelector("#listening-bar").hidden');
-  assert.equal(await evaluate('document.querySelector(".listening-title").textContent'), 'Fake - La Rete Neurale');
-  await click('.listening-toggle');
-  assert.equal(await evaluate('document.querySelector("#music-audio").paused'), true, 'Compact player pauses the same audio');
-  await click('.listening-toggle');
-  await until('!document.querySelector("#music-audio").paused');
-  await click('.listening-next');
-  await until('document.querySelector("#music-audio").dataset.track === "underground-impianti" && !document.querySelector("#music-audio").paused');
-  await click('.listening-prev');
-  await until('document.querySelector("#music-audio").dataset.track === "fake-rete-neurale" && !document.querySelector("#music-audio").paused');
-  await click('.listening-track');
-  await until('document.querySelector("#listening-bar").hidden');
+  assert.equal(await evaluate('document.querySelector("#listening-bar")'), null, 'Playback controls remain in the track cards only');
   const standby = await evaluate(`(() => {
     const video = document.querySelector('#hero-video');
     const before = video.paused;
