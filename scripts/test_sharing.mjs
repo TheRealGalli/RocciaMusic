@@ -139,11 +139,38 @@ try {
   assert.equal(download.name, 'Models - Il Cazzo(intro).mp3');
   assert.equal((await fetch(download.href, {method:'HEAD'})).status, 200, 'The Models MP3 download is reachable');
   assert.equal(await evaluate('document.querySelector("[data-track-id=fake-rete-neurale] .track-time-duration").textContent'), '3:02', 'Durations are visible without downloading every MP3');
+  assert.equal(await evaluate('document.querySelector(".album-legend")'), null, 'Only the album heading remains');
+  assert.equal(await evaluate('document.querySelectorAll("[data-unreleased] .track-play-btn:disabled").length'), 12, 'All unreleased players are inert');
+  await evaluate('document.querySelector("[data-track-id=inedito-01]").scrollIntoView({block:"center"})');
+  await until('/^[0-9]:[0-5][0-9]$/.test(document.querySelector("[data-track-id=inedito-01] [data-scramble=time]").textContent)');
+  const titleMotion = await evaluate('document.querySelector("[data-track-id=inedito-01] [data-scramble=title]").textContent');
+  await until(`document.querySelector("[data-track-id=inedito-01] [data-scramble=title]").textContent !== ${JSON.stringify(titleMotion)}`);
+  const idleSource = await evaluate('document.querySelector("#music-audio").getAttribute("src")');
+  await click('[data-track-id="inedito-01"] .track-play-btn');
+  assert.equal(await evaluate('document.querySelector("#music-audio").getAttribute("src")'), idleSource, 'Unreleased emoji does not select audio');
+  assert.equal(await evaluate('getComputedStyle(document.querySelector("[data-track-id=inedito-01] .track-title")).color'), await evaluate('getComputedStyle(document.querySelector("[data-track-id=models-intro] .track-title")).color'), 'One white title palette');
+  await command('Emulation.setEmulatedMedia', {features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+  await until('document.querySelector("[data-scramble=title]").textContent === "??????"');
+  assert.equal(await evaluate('document.querySelector("[data-scramble=time]").textContent'), '–:––');
+  await command('Emulation.setEmulatedMedia', {features:[{name:'prefers-reduced-motion',value:'no-preference'}]});
   await click('[data-track-id="fake-rete-neurale"] .track-play-btn');
   await until('document.querySelector(".track-audio").currentTime > .1');
   assert.equal(await evaluate('navigator.audioSession.type'), 'playback');
   assert.equal(await evaluate('navigator.mediaSession.metadata.artist'), 'RocciaMusic.com');
   assert.equal(await evaluate('navigator.mediaSession.metadata.album'), 'SUPERPERSONA');
+  await evaluate('document.querySelector(".site-footer").scrollIntoView()');
+  await until('!document.querySelector("#listening-bar").hidden');
+  assert.equal(await evaluate('document.querySelector(".listening-title").textContent'), 'Fake - La Rete Neurale');
+  await click('.listening-toggle');
+  assert.equal(await evaluate('document.querySelector("#music-audio").paused'), true, 'Compact player pauses the same audio');
+  await click('.listening-toggle');
+  await until('!document.querySelector("#music-audio").paused');
+  await click('.listening-next');
+  await until('document.querySelector("#music-audio").dataset.track === "underground-impianti" && !document.querySelector("#music-audio").paused');
+  await click('.listening-prev');
+  await until('document.querySelector("#music-audio").dataset.track === "fake-rete-neurale" && !document.querySelector("#music-audio").paused');
+  await click('.listening-track');
+  await until('document.querySelector("#listening-bar").hidden');
   const standby = await evaluate(`(() => {
     const video = document.querySelector('#hero-video');
     const before = video.paused;
@@ -231,7 +258,7 @@ try {
   const ids = await evaluate('Array.from(document.querySelectorAll(".giradischi-item:not([data-unreleased])"), item => item.dataset.trackId)');
   assert.equal(await evaluate('document.querySelectorAll(".giradischi-item").length'), 24, 'Complete album has 24 artworks');
   assert.equal(await evaluate('document.querySelectorAll("[data-unreleased]").length'), 12, '12 unreleased tracks');
-  assert.equal(await evaluate('document.querySelectorAll("[data-unreleased] .track-play-btn, [data-unreleased] .track-source, [data-unreleased] .track-share-btn").length'), 0, 'Unavailable tracks cannot play or share');
+  assert.equal(await evaluate('document.querySelectorAll("[data-unreleased] .track-play-btn:not(:disabled), [data-unreleased] .track-source, [data-unreleased] .track-share-btn").length'), 0, 'Unavailable tracks cannot play or share');
   assert.equal(await evaluate('document.querySelectorAll(".cipher-title").length'), 10, '10 unannounced titles are masked');
   console.log('Player seek, next track and MediaSession verified');
   for (const id of ids) {

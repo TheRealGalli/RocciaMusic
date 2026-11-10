@@ -28,16 +28,39 @@
   let playRequest = 0;
   let lastSyncSec = -1;
 
+  const listeningBar = document.getElementById('listening-bar');
+  const visiblePlayers = new Set();
+  const syncListeningBar = () => {
+    if (!listeningBar) return;
+    const shown = currentTrack && !visiblePlayers.has(currentTrack.id);
+    listeningBar.hidden = !shown;
+    document.body.classList.toggle('has-listening-bar', Boolean(shown));
+    if (!currentTrack) return;
+    if (listeningBar.dataset.track !== currentTrack.id) {
+      listeningBar.dataset.track = currentTrack.id;
+      listeningBar.querySelector('.listening-title').textContent = currentTrack.title;
+      listeningBar.querySelector('.listening-emoji').textContent = currentTrack.item.querySelector('.track-emoji')?.textContent || '♫';
+      listeningBar.querySelector('.listening-album').textContent = `${currentTrack.item.querySelector('.track-number')?.textContent || ''} / 24 · SUPERPERSONA`;
+    }
+    const playing = wantsPlayback && !audio.paused;
+    listeningBar.classList.toggle('is-playing', playing);
+    listeningBar.querySelector('.listening-toggle').setAttribute('aria-label', playing ? 'Pausa' : 'Riprendi');
+    listeningBar.querySelector('.listening-time').textContent = formatTime(currentTrack.position);
+    listeningBar.querySelector('.listening-progress i').style.width = `${currentTrack.duration ? Math.min(100, currentTrack.position / currentTrack.duration * 100) : 0}%`;
+  };
+
   const renderProgress = (track) => {
     if (track.fill) track.fill.style.width = `${track.duration ? Math.min(100, track.position / track.duration * 100) : 0}%`;
     if (track.time) track.time.textContent = formatTime(track.position);
     if (track.total) track.total.textContent = formatTime(track.duration);
+    if (track === currentTrack) syncListeningBar();
   };
   const updatePlayState = (track, playing) => {
     track.item.classList.toggle('is-playing', playing);
     track.button?.setAttribute('title', playing ? 'Pausa' : 'Play');
     track.button?.setAttribute('aria-label', `${playing ? 'Pausa' : 'Riproduci'} ${track.title}`);
     track.button?.setAttribute('aria-pressed', String(playing));
+    syncListeningBar();
   };
   const setPlaybackState = (state) => {
     try { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = state; } catch (_) {}
@@ -53,6 +76,7 @@
     } catch (_) {}
   };
   const setMediaSession = () => {
+    syncListeningBar();
     if (!currentTrack || !('mediaSession' in navigator)) return;
     try {
       if (typeof MediaMetadata === 'function') {
@@ -249,6 +273,29 @@
       seekTrack(track, Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * track.duration);
     });
   });
+
+  if (listeningBar) {
+    listeningBar.querySelector('.listening-toggle').addEventListener('click', () => {
+      if (wantsPlayback || !audio.paused) pause();
+      else playTrack(currentTrack);
+    });
+    listeningBar.querySelector('.listening-prev').addEventListener('click', () => advance(-1));
+    listeningBar.querySelector('.listening-next').addEventListener('click', () => advance(1));
+    listeningBar.querySelector('.listening-track').addEventListener('click', () => {
+      currentTrack?.item.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    });
+    if ('IntersectionObserver' in window) {
+      const playerObserver = new IntersectionObserver((entries) => {
+        entries.forEach(({ target, isIntersecting }) => {
+          const id = target.closest('.giradischi-item').dataset.trackId;
+          if (isIntersecting) visiblePlayers.add(id);
+          else visiblePlayers.delete(id);
+        });
+        syncListeningBar();
+      });
+      tracks.forEach((track) => playerObserver.observe(track.item.querySelector('.track-player')));
+    }
+  }
 
   // Never unload, pause or restart music just because Safari becomes hidden.
   document.addEventListener('visibilitychange', () => {

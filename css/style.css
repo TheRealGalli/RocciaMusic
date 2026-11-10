@@ -237,13 +237,13 @@ a{color:inherit}
   transition: transform 0.2s ease, filter 0.2s ease;
   user-select: none;
 }
-.track-play-btn:hover {
+.track-play-btn:not(:disabled):hover {
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.35);
   transform: scale(1.1);
   box-shadow: 0 0 16px rgba(255, 255, 255, 0.2);
 }
-.track-play-btn:active {
+.track-play-btn:not(:disabled):active {
   transform: scale(0.92);
 }
 .giradischi-item.is-playing .track-play-btn {
@@ -396,12 +396,46 @@ a{color:inherit}
 
 
 
-/* Complete album: unreleased songs are visual entries, excluded from playback. */
-.album-legend { text-align:center; color:#c8c8ce; margin:-12px 0 36px; }
-.album-legend span, .is-unreleased .track-title, .is-unreleased .track-number { color:#bca5ff; }
-.track-number { color:#a9a9b2; font-size:.75rem; letter-spacing:.16em; margin-top:12px; }
+/* The unreleased entries share the album's white typography and player shape. */
+.track-number { color:#999; font-size:.75rem; letter-spacing:.16em; margin-top:12px; }
 .track-number + .track-title { margin-top:6px; }
 .giradischi-item.is-unreleased { cursor:default; padding-top:44px; }
 .is-unreleased .track-title { flex-wrap:wrap; column-gap:.4em; }
-.cipher-title { letter-spacing:.13em; font-size:.8em; }
-.track-unavailable { margin:4px 0 0; color:#c0afeb; font-size:.78rem; text-align:center; letter-spacing:.04em; }
+.cipher-title { display:inline-block; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.08em; width:6.5ch; font-size:.95em; white-space:nowrap; }
+.track-unavailable { margin:9px 0 0; color:#999; font-size:.65rem; text-align:center; letter-spacing:.16em; text-transform:uppercase; }
+.track-play-btn:disabled { cursor:default; }
+.track-player-unreleased .track-progress-bar { cursor:default; height:6px; background:rgba(255,255,255,.1); }
+.track-time-display { color:#aaa; }
+.unknown-duration { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; width:4ch; text-align:right; color:#ccc; }
+.track-play-btn:focus-visible, .listening-bar button:focus-visible { outline:2px solid #fff; outline-offset:4px; }
+
+/* Reuses the persistent music element; appears when its in-page controls leave view. */
+.listening-bar[hidden] { display:none; }
+.listening-bar { position:fixed; z-index:2050; left:50%; bottom:max(18px,env(safe-area-inset-bottom)); transform:translateX(-50%); width:min(600px,calc(100% - 28px)); display:flex; align-items:center; gap:16px; padding:12px 14px; border:1px solid #39393d; border-radius:18px; background:rgba(20,20,23,.97); box-shadow:0 8px 40px #000b; overflow:hidden; }
+.listening-bar button { font:inherit; color:#f8f9fa; cursor:pointer; }
+.listening-track { display:flex; gap:12px; align-items:center; flex:1; min-width:0; text-align:left; background:none; border:0; padding:0; }
+.listening-emoji { font-size:1.5rem; flex-shrink:0; }
+.listening-copy { min-width:0; display:flex; flex-direction:column; gap:4px; }
+.listening-album { font-size:.6rem; letter-spacing:.18em; color:#999; }
+.listening-title { font-size:.8rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.listening-time { color:#aaa; font-size:.7rem; font-variant-numeric:tabular-nums; }
+.listening-controls { display:flex; align-items:center; gap:4px; }
+.listening-controls button { width:40px; height:40px; display:grid; place-items:center; background:none; border:0; border-radius:50%; padding:9px; }
+.listening-controls button:hover { background:#303034; }
+.listening-controls .listening-toggle { background:#f8f9fa; color:#111; }
+.listening-controls svg { width:21px; height:21px; fill:currentColor; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.dock-pause-icon { display:none; }
+.listening-bar.is-playing .dock-play-icon { display:none; }
+.listening-bar.is-playing .dock-pause-icon { display:block; }
+.listening-progress { position:absolute; top:0; left:0; right:0; height:2px; background:#ffffff0a; }
+.listening-progress i { display:block; height:100%; width:0; background:#eee; }
+body.has-listening-bar .site-footer { padding-bottom:130px; }
+body.has-listening-bar .share-feedback { bottom:110px; }
+@media(max-width:640px) {
+ .listening-bar { gap:8px; padding:10px; border-radius:15px; }
+ .listening-track { gap:8px; }
+ .listening-title { font-size:.72rem; }
+ .listening-controls { gap:0; }
+ .listening-controls button { width:36px; height:40px; padding:8px; }
+ .listening-time { display:none; }
+}
